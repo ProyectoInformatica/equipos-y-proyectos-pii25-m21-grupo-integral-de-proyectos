@@ -8,14 +8,16 @@ WIND_FILE = 'wind.json'           # Dato actual (para alerts.py)
 HISTORY_FILE = 'history_wind.json' # Historial (para data_cleaner.py)
 
 def calculate_wind_speed():
-    # Simulación de lectura
+    # Simulación de lectura, aqui se debería implementar la lógica real del sensor
+    # Por ahora, generamos un valor aleatorio entre 0 y 100 km/h
     pulses = random.uniform(0, 40)
     return round(pulses * 2.4, 2)
 
 def save_data(speed):
+    # función para guardar datos en archivos JSON
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Guardar dato actual 
+    # 1. Guardar dato actual en wind.json
     current_data = {
         "speed_kmh": speed,
         "timestamp": timestamp,
@@ -25,6 +27,10 @@ def save_data(speed):
         json.dump(current_data, f, indent=4)
     
     # 2. Guardar en historial (LO NUEVO)
+    # Cargar historial existente
+    # Si el archivo no existe, iniciamos una lista vacía
+    # Luego añadimos el nuevo dato y guardamos de nuevo
+    # todo el historial
     history = []
     if os.path.exists(HISTORY_FILE):
         try:
@@ -49,3 +55,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # Explicacion: Este script está diseñado para ejecutarse indefinidamente.
+    # En un entorno real, se deberá manejar la terminación adecuada del proceso.
+    # Se debe ejecutar en segundo plano

@@ -2,16 +2,19 @@ import json
 import os
 import time
 
-# Máximo establecido en 10 registros para probar si borra correctamente
+# Máximo establecido en 10 registros comprobar que borra correctamente
 MAX_RECORDS = 10 
 HISTORY_FILES = ['history_wind.json'] 
 
+# Función para limpiar archivos de historial
 def clean_file(filename):
     if not os.path.exists(filename):
         print(f"Esperando a que se cree {filename}...")
         return
 
     try:
+        # Cargar el history_wind.json
+        # Si tiene más de MAX_RECORDS, cortar la lista y guardar de nuevo
         with open(filename, 'r') as f:
             data = json.load(f)
         
@@ -30,6 +33,9 @@ def clean_file(filename):
     except Exception as e:
         print(f"Error: {e}")
 
+# Bucle principal para revisar y limpiar archivos periódicamente
+# Cada 5 segundos revisa los archivos de historial
+# y los limpia si es necesario
 def main():
     print("Iniciando servicio de limpieza...")
     while True:
