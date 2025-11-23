@@ -1,0 +1,66 @@
+import time
+import random
+
+# Simulación de control de alarmas (LED rojo o buzzer)
+# Caso realista basado en sensores MQ-2 (humo), MQ135 (gases) y anemómetro (viento fuerte)
+
+# Umbrales realistas
+THRESHOLD_SMOKE = 350      # MQ-2 valor alto = humo
+THRESHOLD_GAS = 250        # MQ135 gases nocivos
+THRESHOLD_WIND = 40        # m/s viento muy fuerte
+
+# Estados
+alarm_active = False
+
+
+def read_mq2():
+    # Simulación lectura humo MQ-2
+    return random.randint(100, 500)
+
+
+def read_mq135():
+    # Simulación lectura gases MQ135
+    return random.randint(50, 400)
+
+
+def read_wind():
+    # Simulación lectura anemómetro en m/s
+    return round(random.uniform(5, 50), 1)
+
+
+def activate_alarm(reason):
+    global alarm_active
+    alarm_active = True
+    print(f"[ALERTA 🔴] Activando alarma por: {reason}")
+    print("LED ROJO ENCENDIDO / BUZZER ACTIVADO")
+
+
+def deactivate_alarm():
+    global alarm_active
+    if alarm_active:
+        print("[OK] Condiciones normales. Alarma desactivada.")
+    alarm_active = False
+    print("LED ROJO APAGADO / BUZZER DESACTIVADO")
+
+
+if __name__ == "__main__":
+    print("Sistema de control de alarmas iniciado...\n")
+
+    while True:
+        smoke = read_mq2()
+        gas = read_mq135()
+        wind = read_wind()
+
+        print(f"MQ2 (humo): {smoke} | MQ135 (gases): {gas} | Viento: {wind} m/s")
+
+        # Detección de emergencias
+        if smoke > THRESHOLD_SMOKE:
+            activate_alarm("Detección de humo (MQ-2)")
+        elif gas > THRESHOLD_GAS:
+            activate_alarm("Gases peligrosos (MQ135)")
+        elif wind > THRESHOLD_WIND:
+            activate_alarm("Viento extremadamente fuerte — cerrar compuertas")
+        else:
+            deactivate_alarm()
+
+        time.sleep(5)  # intervalo de refresco
