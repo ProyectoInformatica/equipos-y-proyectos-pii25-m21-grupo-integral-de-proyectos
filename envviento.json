@@ -1,0 +1,58 @@
+[
+    {
+        "timestamp": "1900-01-01 08:00:00",
+        "viento_kmh": 11.43
+    },
+    {
+        "timestamp": "1900-01-01 09:00:00",
+        "viento_kmh": 14.23
+    },
+    {
+        "timestamp": "1900-01-01 10:00:00",
+        "viento_kmh": 51.33
+    },
+    {
+        "timestamp": "1900-01-01 11:00:00",
+        "viento_kmh": 76.95
+    },
+    {
+        "timestamp": "1900-01-01 12:00:00",
+        "viento_kmh": 50.93
+    },
+    {
+        "timestamp": "1900-01-01 13:00:00",
+        "viento_kmh": 40.91
+    },
+    {
+        "timestamp": "1900-01-01 14:00:00",
+        "viento_kmh": 37.35
+    },
+    {
+        "timestamp": "1900-01-01 15:00:00",
+        "viento_kmh": 21.06
+    },
+    {
+        "timestamp": "1900-01-01 16:00:00",
+        "viento_kmh": 15.8
+    },
+    {
+        "timestamp": "1900-01-01 17:00:00",
+        "viento_kmh": 38.17
+    },
+    {
+        "timestamp": "1900-01-01 18:00:00",
+        "viento_kmh": 17.97
+    },
+    {
+        "timestamp": "1900-01-01 19:00:00",
+        "viento_kmh": 50.72
+    },
+    {
+        "timestamp": "1900-01-01 20:00:00",
+        "viento_kmh": 70.94
+    },
+    {
+        "timestamp": "1900-01-01 21:00:00",
+        "viento_kmh": 18.07
+    }
+]

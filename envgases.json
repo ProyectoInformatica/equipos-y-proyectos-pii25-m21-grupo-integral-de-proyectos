@@ -1,0 +1,58 @@
+[
+    {
+        "timestamp": "1900-01-01 08:00:00",
+        "gases_ppm": 70
+    },
+    {
+        "timestamp": "1900-01-01 09:00:00",
+        "gases_ppm": 337
+    },
+    {
+        "timestamp": "1900-01-01 10:00:00",
+        "gases_ppm": 355
+    },
+    {
+        "timestamp": "1900-01-01 11:00:00",
+        "gases_ppm": 332
+    },
+    {
+        "timestamp": "1900-01-01 12:00:00",
+        "gases_ppm": 264
+    },
+    {
+        "timestamp": "1900-01-01 13:00:00",
+        "gases_ppm": 78
+    },
+    {
+        "timestamp": "1900-01-01 14:00:00",
+        "gases_ppm": 176
+    },
+    {
+        "timestamp": "1900-01-01 15:00:00",
+        "gases_ppm": 234
+    },
+    {
+        "timestamp": "1900-01-01 16:00:00",
+        "gases_ppm": 380
+    },
+    {
+        "timestamp": "1900-01-01 17:00:00",
+        "gases_ppm": 227
+    },
+    {
+        "timestamp": "1900-01-01 18:00:00",
+        "gases_ppm": 45
+    },
+    {
+        "timestamp": "1900-01-01 19:00:00",
+        "gases_ppm": 148
+    },
+    {
+        "timestamp": "1900-01-01 20:00:00",
+        "gases_ppm": 259
+    },
+    {
+        "timestamp": "1900-01-01 21:00:00",
+        "gases_ppm": 362
+    }
+]
