@@ -1,56 +1,70 @@
 import subprocess
-import sys
 import time
+import sys
 import os
 
-# Definimos las rutas correctas
-scripts_to_run = [
-    # Sprint 1 y 2
-    os.path.join("sensores", "ldr_read.py"),
-    os.path.join("sensores", "env_read.py"),
-    os.path.join("sensores", "wind_sensor.py"),
-    os.path.join("sensores", "smoke_sensor.py"),
-    os.path.join("controllers", "alarm_control.py"),
-    os.path.join("controllers", "data_cleaner.py"),
-    os.path.join("controllers", "scheduler.py"),
-    
-    # Sprint 3 
-    os.path.join("sensores", "distance_sensor.py"),
-    os.path.join("sensores", "flow_sensor.py"),
-    os.path.join("controllers", "access_control.py"),
-    os.path.join("controllers", "resource_monitor.py")
+# Definir la ruta base del proyecto
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SENSORES_DIR = os.path.join(BASE_DIR, "sensores")
+
+# Lista COMPLETA de scripts (Sensores + Controladores)
+sensores = [
+    # --- Sensores ---
+    "ldr_read.py",
+    "env_read.py",
+    "smoke_sensor.py",
+    "wind_sensor.py",
+    "distance_sensor.py",
+    "flow_sensor.py",
+    "power_sensor.py",
+
+    "controllers/alarm_control.py",  # Gestión de alarmas
+    "controllers/scheduler.py",     # Control horario de luces
+    "controllers/data_cleaner.py"    # Limpieza de datos antiguos
 ]
 
 procesos = []
 
-def main():
-    print("GIP: Sistema Smart Residential (Sprint 3)")
+def iniciar_sensores():
+    print(f"Iniciando Sistema Residencial Inteligente")
+    print(f"Directorio base: {BASE_DIR}")
+    
+    # 1. Iniciar cada script en un proceso independiente
+    for script in sensores:
+        # Detectar si es ruta relativa (controllers/...) o sensor directo
+        if "/" in script or "\\" in script:
+             ruta_script = os.path.join(BASE_DIR, script)
+        else:
+             ruta_script = os.path.join(SENSORES_DIR, script)
 
-    try:
-        for script in scripts_to_run:
-            if os.path.exists(script):
-                print(f"   [+] Iniciando {script}...")
-                p = subprocess.Popen([sys.executable, script])
+        if os.path.exists(ruta_script):
+            try:
+                p = subprocess.Popen([sys.executable, ruta_script])
                 procesos.append(p)
-            else:
-                print(f"   [!] Error: No se encuentra {script}")
+                print(f"Iniciado: {script}")
+            except Exception as e:
+                print(f"Falló al iniciar {script}: {e}")
+        else:
+            print(f"No encontrado: {ruta_script}")
 
-        print("Sistema completo corriendo en segundo plano.")
-        
-        time.sleep(2)
-
-        print("Abriendo aplicación principal (main.py)...")
-        subprocess.run([sys.executable, "main.py"])
-
+    # 2. Iniciar la Interfaz Gráfica (Flet)
+    print("Iniciando Interfaz Gráfica")
+    ruta_app = os.path.join(BASE_DIR, "main.py")
+    try:
+        subprocess.run([sys.executable, ruta_app])
     except KeyboardInterrupt:
-        print("\n\nInterrupción.")
-
+        print("\nCierre manual detectado.")
     finally:
-        print("\n🧹 Cerrando sistema...")
-        for p in procesos:
-            try: p.terminate(); p.wait()
-            except: pass
-        print("Hasta luego.")
+        cerrar_todo()
+
+def cerrar_todo():
+    print("\n--- Cerrando procesos... ---")
+    for p in procesos:
+        try:
+            p.terminate()
+        except:
+            pass
+    print("Sistema apagado correctamente.")
 
 if __name__ == "__main__":
-    main()
+    iniciar_sensores()

@@ -37,20 +37,20 @@ def check_alerts():
         gas = env_data.get('gas_level', 0)
         
         if temp > TEMP_MAX:
-            alerts.append(f"[PELIGRO] Temperatura alta: {temp}°C")
+            alerts.append(f"PELIGRO Temperatura alta: {temp}°C")
         if gas > GAS_MAX:
-            alerts.append(f"[PELIGRO] Nivel de gas tóxico: {gas} PPM")
+            alerts.append(f"PELIGRO Nivel de gas tóxico: {gas} PPM")
             
     # 2. Verificar Viento 
     wind_data = load_json(WIND_FILE)
     if wind_data:
         speed = wind_data.get('speed_kmh', 0)
         if speed > WIND_MAX:
-            alerts.append(f"[ALERTA] Viento fuerte: {speed} km/h - CERRAR COMPUERTAS")
+            alerts.append(f"ALERTA Viento fuerte: {speed} km/h - CERRAR COMPUERTAS")
 
     # Mostrar alertas
     if alerts:
-        print("\n--- ALERTAS ACTIVAS ---")
+        print("\nALERTAS ACTIVAS DE SEGURIDAD:")
         for alert in alerts:
             print(alert)
             # Aquí se añadira código para enviar un email o guardar en un log, etc

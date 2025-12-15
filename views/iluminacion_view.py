@@ -9,7 +9,7 @@ class IluminacionView(ft.Container):
         super().__init__(expand=True)
         self.page = page
 
-        # --- CONTROLES ---
+        # CONTROLES 
         control_op = ft.Text("Control por: ", weight=ft.FontWeight.BOLD)
         control_op_val = ft.Text("Manual")
         luminosidad_op = ft.Text("Luminosidad: ", weight=ft.FontWeight.BOLD)
@@ -22,7 +22,7 @@ class IluminacionView(ft.Container):
 
         mapa = ft.Image(src="mapa_iluminacion_off.jpg", expand=True, fit=ft.ImageFit.COVER)
 
-        # --- LÓGICA DE ACTUALIZACIÓN VISUAL ---
+        # LÓGICA DE ACTUALIZACIÓN VISUAL 
         def actualizar_interfaz_datos():
             try:
                 # 1. Luminosidad (Siempre se actualiza)
@@ -62,7 +62,7 @@ class IluminacionView(ft.Container):
             except Exception as e:
                 print(f"Error UI: {e}")
 
-        # --- HILO AUTOMÁTICO ---
+        #  HILO AUTOMÁTICO 
         def ciclo_actualizacion_automatica():
             while True:
                 time.sleep(2)
@@ -70,7 +70,7 @@ class IluminacionView(ft.Container):
 
         threading.Thread(target=ciclo_actualizacion_automatica, daemon=True).start()
 
-        # --- EVENTOS ---
+        # EVENTOS
         def cambiar_modo(nuevo_modo):
             control_op_val.value = nuevo_modo
             page.update()
@@ -96,7 +96,7 @@ class IluminacionView(ft.Container):
         umbral.on_change = cambiar_umbral
         btn_auto = ft.ElevatedButton("Actualizar", on_click=control_automatico_click)
 
-        # --- SECCIÓN HORARIO ---
+        # SECCIÓN HORARIO 
         horas = [f"{i:02d}" for i in range(24)]
         minutos = [f"{i:02d}" for i in range(0, 60, 5)]
         
@@ -122,7 +122,7 @@ class IluminacionView(ft.Container):
 
         boton_confirmar = ft.ElevatedButton("Confirmar", on_click=accion_confirmar_horario)
 
-        # --- LAYOUT ---
+        # LAYOUT
         control_panel_manual = ft.Container(
             content=ft.Column([
                 ft.Row([ft.Text("Control manual", size=16, weight="bold")], alignment=ft.MainAxisAlignment.CENTER),

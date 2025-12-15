@@ -5,87 +5,111 @@ from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+
+# Archivos
 SENSOR_FILE = os.path.join(DATA_DIR, "access_distance.json")
 STATE_FILE = os.path.join(DATA_DIR, "access_state.json")
 LOG_FILE = os.path.join(DATA_DIR, "access_log.json")
+MANUAL_FILE = os.path.join(DATA_DIR, "access_manual_state.json")
 
 # Configuración
 DISTANCIA_APERTURA = 100
-TIEMPO_PASO_VEHICULO = 5  # La barrera se mantiene verde 5 segundos
+TIEMPO_PASO_VEHICULO = 5
 
-# Estado interno
 barrera_fisica_abierta = False
 
-def get_distance():
-    if os.path.exists(SENSOR_FILE):
+def get_json_data(filepath, default):
+    if os.path.exists(filepath):
         try:
-            with open(SENSOR_FILE, "r") as f:
-                return json.load(f).get("distance_cm", 500)
-        except: return 500
-    return 500
+            with open(filepath, "r") as f: return json.load(f)
+        except: pass
+    return default
 
-def log_access_event():
+def log_access_event(tipo="Vehículo Detectado"):
     nuevo_registro = {
         "hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "evento": "Acceso Permitido",
-        "tipo": "Vehículo Detectado"
+        "tipo": tipo
     }
-    registros = []
-    if os.path.exists(LOG_FILE):
-        try:
-            with open(LOG_FILE, "r") as f: registros = json.load(f)
-        except: pass
-    
+    registros = get_json_data(LOG_FILE, [])
     registros.insert(0, nuevo_registro)
     registros = registros[:20]
-    
     try:
         with open(LOG_FILE, "w") as f: json.dump(registros, f, indent=4)
-        print(f"[ACCESO] Registro guardado: {nuevo_registro['hora']}")
+        print(f"[LOG] Nuevo registro: {tipo}")
     except: pass
 
-def set_barrier_state(is_open, distance):
-    # AQUÍ ESTÁ EL CAMBIO DE TEXTO QUE PEDISTE
+def set_barrier_state(is_open, distance, msg_extra=""):
+    msg = "BARRERA ABIERTA" if is_open else "BARRERA CERRADA"
+    # Si está en manual, lo indicamos en el mensaje para que la UI lo sepa
+    if msg_extra == "MANUAL":
+        msg += " (MANUAL)"
+    
     state = {
         "barrera_abierta": is_open,
-        "mensaje": "BARRERA ABIERTA" if is_open else "BARRERA CERRADA",
+        "mensaje": msg,
         "distancia_detectada": distance
     }
     try:
-        with open(STATE_FILE, "w") as f:
-            json.dump(state, f, indent=4)
+        with open(STATE_FILE, "w") as f: json.dump(state, f, indent=4)
     except: pass
 
 def main():
     global barrera_fisica_abierta
-    print("Controlador de Accesos (5s Verde)")
+    print("Controlador de Accesos (DEBUG MODE)")
     
     tiempo_para_cerrar = 0
     
     while True:
-        dist = get_distance()
+        # Leemos los estados
+        raw_sensor = get_json_data(SENSOR_FILE, {"distance_cm": 500})
+        dist = raw_sensor.get("distance_cm", 500)
         
-        # 1. Detectar coche
-        if dist < DISTANCIA_APERTURA:
-            # Renovamos los 5 segundos de "tiempo verde"
-            tiempo_para_cerrar = time.time() + TIEMPO_PASO_VEHICULO
-            
-            if not barrera_fisica_abierta:
-                log_access_event()
-                print(f"COCHE DETECTADO ({dist}cm) -> ABRIENDO")
-                barrera_fisica_abierta = True
+        # Leemos el archivo manual
+        manual_config = get_json_data(MANUAL_FILE, {"modo_manual": False, "abrir": False})
+        
+        estado_final = False
+        origen = "AUTO"
 
-        # 2. Gestionar tiempo
-        if time.time() < tiempo_para_cerrar:
-            estado_actual = True  # Mantenemos verde
+        # LÓGICA DE DECISIÓN DE APERTURA/CIERRE
+        if manual_config.get("modo_manual") is True:
+            # MODO MANUAL ACTIVO
+            origen = "MANUAL"
+            if manual_config.get("abrir") is True:
+                estado_final = True
+                if not barrera_fisica_abierta:
+                    print(f"MANUAL Orden de ABRIR recibida.")
+                    log_access_event("Apertura Manual")
+                    barrera_fisica_abierta = True
+            else:
+                estado_final = False
+                if barrera_fisica_abierta:
+                    print(f"MANUAL Orden de CERRAR recibida.")
+                    barrera_fisica_abierta = False
         else:
-            estado_actual = False # Cerramos
-            if barrera_fisica_abierta:
-                print("TIEMPO AGOTADO -> CERRANDO")
-                barrera_fisica_abierta = False
+            # MODO AUTOMÁTICO
+            if dist < DISTANCIA_APERTURA:
+                tiempo_para_cerrar = time.time() + TIEMPO_PASO_VEHICULO
+                if not barrera_fisica_abierta:
+                    log_access_event("Vehículo Detectado")
+                    print(f"AUTO Coche a {dist}cm -> Abriendo")
+                    barrera_fisica_abierta = True
+            
+            if time.time() < tiempo_para_cerrar:
+                estado_final = True
+            else:
+                estado_final = False
+                if barrera_fisica_abierta:
+                    print("AUTO Tiempo agotado -> Cerrando")
+                    barrera_fisica_abierta = False
 
-        # 3. Guardar estado
-        set_barrier_state(estado_actual, dist)
+        # Guardar estado
+        set_barrier_state(estado_final, dist, origen)
+        
+        # Pequeño debug en consola si está en manual para confirmar que lo lee
+        if origen == "MANUAL":
+            # print(f"Estado Manual: {manual_config}") 
+            pass
             
         time.sleep(0.5)
 

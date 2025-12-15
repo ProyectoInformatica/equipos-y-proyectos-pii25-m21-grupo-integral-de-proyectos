@@ -43,8 +43,9 @@ def generar_grafica(x, y, titulo, ylabel):
 
 class AmbientalView(ft.Container):
     def __init__(self, page):
-        super().__init__(expand=True)
-        self.page = page
+        super().__init__(expand=True, padding=20)
+        # CORRECCIÓN: Usamos un nombre distinto para no chocar con la propiedad 'page' de Flet
+        self.page_ref = page 
 
         # --- CONTROLES VISUALES ---
         self.img_temp = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
@@ -69,124 +70,144 @@ class AmbientalView(ft.Container):
         # --- EVENTOS VISUALES ---
         def on_change_temp(e):
             self.txt_temp.value = f"Alerta actual: {int(self.umbral_temp.value)}ºC"
-            self.page.update()
+            self.page_ref.update()
 
         def on_change_hum(e):
             self.txt_hum.value = f"Alerta actual: {int(self.umbral_hum.value)}%"
-            self.page.update()
+            self.page_ref.update()
 
         def on_change_aire(e):
             self.txt_aire.value = f"Alerta actual: {int(self.umbral_aire.value)}"
-            self.page.update()
+            self.page_ref.update()
 
         self.umbral_temp.on_change = on_change_temp
         self.umbral_hum.on_change = on_change_hum
         self.umbral_aire.on_change = on_change_aire
 
-        # --- GUARDAR CAMBIOS (CORREGIDO) ---
+        # GUARDAR CAMBIOS ---
         def guardar_cambios(e):
-            # 1. Leer config existente para NO borrar las de Emergencias
             config = DataController.obtener_config_alertas()
-            
-            # 2. Actualizar solo las nuestras
             config["temp_max"] = int(self.umbral_temp.value)
             config["hum_max"] = int(self.umbral_hum.value)
             config["iaq_max"] = int(self.umbral_aire.value)
 
-            # 3. Guardar
             if DataController.guardar_config_alertas(config):
-                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Configuración ambiental guardada"), bgcolor="green")
+                self.page_ref.snack_bar = ft.SnackBar(ft.Text("Configuración ambiental guardada"), bgcolor="green")
             else:
-                self.page.snack_bar = ft.SnackBar(ft.Text("❌ Error al guardar"), bgcolor="red")
-            self.page.snack_bar.open = True
+                self.page_ref.snack_bar = ft.SnackBar(ft.Text("Error al guardar"), bgcolor="red")
             
-            # Recargar gráficas y UI
-            cargar_y_actualizar_graficos()
+            self.page_ref.snack_bar.open = True
+            cargar_y_actualizar_graficos() # Actualiza y refresca la página
 
-        # --- LÓGICA GRÁFICAS ---
+        # LÓGICA GRÁFICAS 
         def cargar_y_actualizar_graficos(e=None):
-            datos = DataController.obtener_datos_ambientales()
-            
-            if datos["temp"]:
-                # Formato con segundos
-                horas = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["temp"]]
-                self.img_temp.src_base64 = generar_grafica(horas, [x["value"] for x in datos["temp"]], "Temperatura 24h", "°C")
-                self.img_hum.src_base64 = generar_grafica(horas, [x["value"] for x in datos["hum"]], "Humedad 24h", "%")
-                self.img_iaq.src_base64 = generar_grafica(horas, [x["value"] for x in datos["iaq"]], "Calidad Aire (IAQ)", "IAQ")
-            
-            self.page.update()
+            try:
+                datos = DataController.obtener_datos_ambientales()
+                
+                if datos["temp"]:
+                    horas = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["temp"]]
+                    self.img_temp.src_base64 = generar_grafica(horas, [x["value"] for x in datos["temp"]], "Temperatura 24h", "°C")
+                    self.img_hum.src_base64 = generar_grafica(horas, [x["value"] for x in datos["hum"]], "Humedad 24h", "%")
+                    self.img_iaq.src_base64 = generar_grafica(horas, [x["value"] for x in datos["iaq"]], "Calidad Aire (IAQ)", "IAQ")
+                
+                # Usamos page_ref para evitar el error de NoneType
+                if self.page_ref: 
+                    self.page_ref.update()
+            except Exception as e:
+                print(f"Error actualizando gráficas: {e}")
 
-        # --- HILO AUTOMÁTICO ---
+        # HILO AUTOMÁTICO
         def auto_refresh_loop():
             while True:
                 time.sleep(10)
-                try: cargar_y_actualizar_graficos()
-                except: pass
+                # Verificamos si la página sigue activa antes de actualizar
+                if self.page_ref: 
+                    try: cargar_y_actualizar_graficos()
+                    except: pass
         
         threading.Thread(target=auto_refresh_loop, daemon=True).start()
         cargar_y_actualizar_graficos()
 
-        # --- UI LAYOUT ---
+        # UI LAYOUT
+        # Botones de guardar
         btn_temp = ft.ElevatedButton("Guardar Configuración", on_click=guardar_cambios)
         btn_hum = ft.ElevatedButton("Guardar Configuración", on_click=guardar_cambios)
         btn_aire = ft.ElevatedButton("Guardar Configuración", on_click=guardar_cambios)
 
         # Checkboxes
-        check_mail = ft.Checkbox(label="Notificar por correo")
-        check_tel = ft.Checkbox(label="Notificar por teléfono")
+        self.check_mail_temp = ft.Checkbox(label="Notificar por correo")
+        self.check_tel_temp = ft.Checkbox(label="Notificar por teléfono")
+        self.check_mail_hum = ft.Checkbox(label="Notificar por correo")
+        self.check_tel_hum = ft.Checkbox(label="Notificar por teléfono")
+        self.check_mail_aire = ft.Checkbox(label="Notificar por correo")
+        self.check_tel_aire = ft.Checkbox(label="Notificar por teléfono")
 
+        # PANEL 1: TEMPERATURA
         control_panel_temperatura = ft.Container(
             content=ft.Column([
                 ft.Text("Alerta por temperatura", size=16, weight="bold"),
                 self.txt_temp,
                 self.umbral_temp,
-                check_mail, check_tel,
+                self.check_mail_temp, 
+                self.check_tel_temp,
                 btn_temp
             ], spacing=10, horizontal_alignment="center"), 
-            padding=20, bgcolor="#ffffff", border_radius=10, expand=1
+            padding=20, bgcolor="#ffffff", border_radius=10, expand=1,
+            shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
         )
 
+        # PANEL 2: HUMEDAD
         control_panel_humedad = ft.Container(
             content=ft.Column([
                 ft.Text("Alerta por humedad", size=16, weight="bold"),
                 self.txt_hum,
                 self.umbral_hum,
-                check_mail, check_tel,
+                self.check_mail_hum, 
+                self.check_tel_hum,
                 btn_hum
             ], spacing=10, horizontal_alignment="center"), 
-            padding=20, bgcolor="#ffffff", border_radius=10, expand=1
+            padding=20, bgcolor="#ffffff", border_radius=10, expand=1,
+            shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
         )
 
+        # PANEL 3: AIRE
         control_panel_aire = ft.Container(
             content=ft.Column([
                 ft.Text("Alerta por calidad del aire", size=16, weight="bold"),
                 self.txt_aire,
                 self.umbral_aire,
-                check_mail, check_tel,
+                self.check_mail_aire, 
+                self.check_tel_aire,
                 btn_aire
             ], spacing=10, horizontal_alignment="center"), 
-            padding=20, bgcolor="#ffffff", border_radius=10, expand=1
+            padding=20, bgcolor="#ffffff", border_radius=10, expand=1,
+            shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
         )
 
-        main_content = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Container(content=ft.Text("Control ambiental de la zona", size=24, weight="bold"),
-                        bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
-                ]),
-                ft.Row([self.img_temp, self.img_hum, self.img_iaq]),
-                ft.Row([
-                    ft.Container(content=ft.Text("Configuración de alertas", size=16, weight="bold"),
-                        bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
-                ]),
-                ft.Row([control_panel_temperatura, control_panel_humedad, control_panel_aire],
-                       vertical_alignment=ft.CrossAxisAlignment.START),
-                ], scroll=ft.ScrollMode.ADAPTIVE, alignment=ft.MainAxisAlignment.START
-            )
-        )
-
-        super().__init__(content=main_content, expand=True)
-
-    def toggle_vis(self, e, control):
-        control.visible = e.control.value
-        self.page.update()
+        # Contenido Principal
+        self.content = ft.Column([
+            # Encabezado estilo unificado
+            ft.Container(
+                content=ft.Text("Control ambiental de la zona", size=24, weight="bold"),
+                bgcolor="white", 
+                padding=20, 
+                border_radius=10, 
+                width=float("inf"),
+                shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
+            ),
+            ft.Container(height=10),
+            
+            # Gráficas
+            ft.Row([self.img_temp, self.img_hum, self.img_iaq]),
+            
+            ft.Container(height=20),
+            ft.Container(
+                content=ft.Text("Configuración de alertas", size=20, weight="bold"),
+                padding=5
+            ),
+            
+            # Paneles de control
+            ft.Row([control_panel_temperatura, control_panel_humedad, control_panel_aire],
+                   vertical_alignment=ft.CrossAxisAlignment.START),
+            
+        ], scroll=ft.ScrollMode.AUTO)

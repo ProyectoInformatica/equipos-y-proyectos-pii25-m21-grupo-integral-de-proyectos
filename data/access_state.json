@@ -1,5 +1,5 @@
 {
-    "barrera_abierta": true,
-    "mensaje": "BARRERA ABIERTA",
+    "barrera_abierta": false,
+    "mensaje": "BARRERA CERRADA",
     "distancia_detectada": 500
 }

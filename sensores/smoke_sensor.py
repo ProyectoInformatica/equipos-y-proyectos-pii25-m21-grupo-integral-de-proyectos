@@ -29,7 +29,7 @@ def simulate_smoke():
     return current_smoke
 
 def main():
-    print("--- Sensor de Humo (Estable) ---")
+    print("Sensor de Humo Iniciado")
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     
     while True:
@@ -46,7 +46,7 @@ def main():
 
         with open(DATA_FILE, "w") as f: json.dump(data, f, indent=4)
         
-        print(f"[Humo] Nivel: {level}")
+        print(f"Humo Nivel: {level}")
         time.sleep(5)
 
 if __name__ == "__main__":

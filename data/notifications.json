@@ -1,0 +1,80 @@
+[
+    {
+        "hora": "2025-12-15 18:52:04",
+        "titulo": "Fuga de Agua",
+        "mensaje": "Consumo an\u00f3malo: 45.57 L/min",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:52:04",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 37.23 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:59",
+        "titulo": "Fuga de Agua",
+        "mensaje": "Consumo an\u00f3malo: 48.31 L/min",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:59",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 40.79 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:54",
+        "titulo": "Fuga de Agua",
+        "mensaje": "Consumo an\u00f3malo: 47.56 L/min",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:54",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 42.41 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:48",
+        "titulo": "Fuga de Agua",
+        "mensaje": "Consumo an\u00f3malo: 48.45 L/min",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:48",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 29",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2025-12-15 18:51:48",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 36.71 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:43",
+        "titulo": "Fuga de Agua",
+        "mensaje": "Consumo an\u00f3malo: 47.65 L/min",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:38",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 41.24 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2025-12-15 18:51:33",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 26",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2025-12-15 18:51:33",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 42.45 km/h",
+        "nivel": "cr\u00edtico"
+    }
+]

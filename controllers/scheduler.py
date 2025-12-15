@@ -20,7 +20,7 @@ def leer_horario():
                 "minuto_fin": int(data.get("minuto_fin", 0))
             }
     except Exception as e:
-        print(f"[scheduler] Error leyendo horario: {e}")
+        print(f"scheduler Error leyendo horario: {e}")
         return {"hora_inicio": 0, "minuto_inicio": 0, "hora_fin": 0, "minuto_fin": 0}
 
 def guardar_horario(h_ini, m_ini, h_fin, m_fin):
@@ -37,10 +37,10 @@ def guardar_horario(h_ini, m_ini, h_fin, m_fin):
     try:
         with open(SCHEDULE_FILE, "w") as f:
             json.dump(nuevo_horario, f, indent=4)
-        print(f"[scheduler] Nuevo horario guardado: {nuevo_horario}")
+        print(f"scheduler Nuevo horario guardado: {nuevo_horario}")
         return True
     except Exception as e:
-        print(f"[scheduler] Error guardando horario: {e}")
+        print(f"scheduler Error guardando horario: {e}")
         return False
 
 def escribir_estado_luz(estado):
@@ -58,9 +58,9 @@ def escribir_estado_luz(estado):
     try:
         with open(LIGHT_FILE, "w") as f:
             json.dump(data, f, indent=4)
-        # print(f"[scheduler] Luz actualizada -> {estado.upper()}") # Comentado para no saturar consola
+        # print(f"scheduler Luz actualizada -> {estado.upper()}") # Comentado para no saturar consola
     except Exception as e:
-        print(f"[scheduler] Error escribiendo light.json: {e}")
+        print(f"scheduler Error escribiendo light.json: {e}")
 
 def dentro_del_horario(hora_actual, minuto_actual, horario):
     inicio = horario["hora_inicio"] * 60 + horario["minuto_inicio"]
@@ -73,7 +73,7 @@ def dentro_del_horario(hora_actual, minuto_actual, horario):
         return inicio <= actual < fin
 
 def scheduler_loop():
-    print("[scheduler] Iniciando control horario...")
+    print("Iniciando control horario...")
     while True:
         horario = leer_horario()
         ahora = datetime.now()

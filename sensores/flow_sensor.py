@@ -31,7 +31,7 @@ def simulate_water_flow():
     return round(current_flow, 2)
 
 def main():
-    print("Sensor de Caudal (Agua) Iniciado")
+    print("Sensor de Caudal de Agua Iniciado")
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     
     while True:

@@ -9,6 +9,8 @@ from views.emergencias_view import EmergenciasView
 from views.acceso_view import AccesoView
 from views.recursos_view import RecursosView
 from views.dashboard_view import DashboardView
+from views.notifications_view import NotificationsView
+from views.map_view import MapView
 
 def main(page: ft.Page):
     page.window.maximized = True
@@ -18,108 +20,79 @@ def main(page: ft.Page):
     page.padding = 0
     page.bgcolor = "#dddddd"
 
-    # Contenedor principal donde se mostrará login o la app
+    # Contenedor principal
     main_container = ft.Container(expand=True)
     page.add(main_container)
 
-    # --- función para cargar la app tras login ---
-    def load_app():
-        # 1. Crear contenedor donde se cargan las vistas internas
+    # Función para cargar la app tras login
+    # RECIBE EL OBJETO USUARIO
+    def load_app(usuario):
+        
+        # 1. Contenedor de vistas
         content_container = ft.Container(
             expand=True,
-            #bgcolor="#ffffff",
             border_radius=10,
             margin=ft.Margin(0, 10, 10, 10) 
         )
 
         # 2. Instanciar vistas
         views = {
+            "mapa": MapView(page), 
             "iluminacion": IluminacionView(page),
-            "ambiental":AmbientalView(page),
-            "emergencias":EmergenciasView(page),
-            "acceso":AccesoView(page),
-            "recursos":RecursosView(page),
-            "dashboard":DashboardView(page)
+            "ambiental": AmbientalView(page),
+            "emergencias": EmergenciasView(page),
+            "acceso": AccesoView(page),
+            "recursos": RecursosView(page),
+            "dashboard": DashboardView(page),
+            "notificaciones": NotificationsView(page)
         }
 
         # 3. Controlador de navegación
         controller = NavigationController(page, content_container, views)
 
-        # 4. Header
+        # 4. Header (Sidebar lateral)
         header = ft.Container(
             content=ft.Column(
                 [
-                    # ────────────── LOGO ──────────────
-                    ft.Row(
-                        [ft.Image(src="logo.png", width=120)],
-                        alignment=ft.MainAxisAlignment.CENTER
-                    ),
-
-                    # ────────────── DIVISOR ──────────────
+                    # LOGO
+                    ft.Row([ft.Image(src="logo.png", width=120)], alignment=ft.MainAxisAlignment.CENTER),
                     ft.Divider(height=20, color="#cccccc"),
 
-                    # ────────────── MENÚ SUPERIOR ──────────────
+                    # INFO USUARIO (NUEVO)
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text(f"{usuario['name']}", weight="bold", size=14, text_align="center"),
+                            ft.Text(f"Rol: {usuario['role'].upper()}", size=12, color="grey", text_align="center"),
+                        ], horizontal_alignment="center"),
+                        padding=10
+                    ),
+                    ft.Divider(height=10, color="#cccccc"),
+
+                    # MENÚ
                     ft.Column(
                         [
-                            ft.Row([
-                                ft.Image(src="icon_dashboard.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Dashboard", color="black"),
-                                    on_click=lambda e: controller.go("dashboard")
-                                )
-                            ]),
-                            ft.Row([
-                                ft.Image(src="icon_iluminacion.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Control iluminación", color="black"),
-                                    on_click=lambda e: controller.go("iluminacion")
-                                )
-                            ]),
-                            ft.Row([
-                                ft.Image(src="icon_ambiental.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Control ambiental", color="black"),
-                                    on_click=lambda e: controller.go("ambiental")
-                                )
-                            ]),
-                            ft.Row([
-                                ft.Image(src="icon_emergencias.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Gestión emergencias", color="black"),
-                                    on_click=lambda e: controller.go("emergencias")
-                                )
-                            ]),
-                            ft.Row([
-                                ft.Image(src="icon_acceso.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Control acceso", color="black"),
-                                    on_click=lambda e: controller.go("acceso")
-                                )
-                            ]),
-                            ft.Row([
-                                ft.Image(src="icon_recursos.png", width=25),
-                                ft.TextButton(
-                                    content=ft.Text("Gestión recursos", color="black"),
-                                    on_click=lambda e: controller.go("recursos")
-                                )
-                            ]),
+                            _crear_boton_menu("Dashboard", "icon_dashboard.png", "dashboard", controller),
+                            _crear_boton_menu("Mapa de Zona", "icon_mapa.png", "mapa", controller),
+                            _crear_boton_menu("Control iluminación", "icon_iluminacion.png", "iluminacion", controller),
+                            _crear_boton_menu("Control ambiental", "icon_ambiental.png", "ambiental", controller),
+                            _crear_boton_menu("Gestión emergencias", "icon_emergencias.png", "emergencias", controller),
+                            _crear_boton_menu("Control acceso", "icon_acceso.png", "acceso", controller),
+                            _crear_boton_menu("Gestión recursos", "icon_recursos.png", "recursos", controller),
+                            _crear_boton_menu("Notificaciones", "icon_notificaciones.png", "notificaciones", controller)
                         ],
-                        spacing=10
+                        spacing=5
                     ),
 
-                    # Esto empuja el botón hacia abajo
                     ft.Container(expand=True),
-
-                    # ────────────── DIVISOR ──────────────
                     ft.Divider(height=20, color="#cccccc"),
 
-                    # ────────────── BOTÓN CERRAR SESIÓN ──────────────
+                    # CERRAR SESIÓN (Recargar página simulado)
                     ft.Row(
                         [
                             ft.Image(src="icon_usuario.png", width=25),
                             ft.TextButton(
                                 content=ft.Text("Cerrar sesión", color="black"),
-                                on_click=lambda e: controller.confirm_exit()
+                                on_click=lambda e: _reiniciar_login()
                             )
                         ],
                         alignment=ft.MainAxisAlignment.START
@@ -134,19 +107,22 @@ def main(page: ft.Page):
             width=250,
         )
 
-
-        # 5. Reemplazar login con la app
-        main_container.content = ft.Row([
-            header,
-            content_container
-        ],vertical_alignment=ft.CrossAxisAlignment.START)
-
+        main_container.content = ft.Row([header, content_container], vertical_alignment=ft.CrossAxisAlignment.START)
         controller.go("dashboard")
         page.update()
 
-    # --- cargar login al iniciar ---
-    login_view = LoginView(page, on_success=load_app)
-    main_container.content = login_view.build()
-    page.update()
+    def _crear_boton_menu(texto, icono, vista, controller):
+        return ft.Row([
+            ft.Image(src=icono, width=25),
+            ft.TextButton(content=ft.Text(texto, color="black"), on_click=lambda e: controller.go(vista))
+        ])
+
+    def _reiniciar_login():
+        # Limpiar y volver a cargar login
+        main_container.content = LoginView(page, on_success=load_app).build()
+        page.update()
+
+    # Cargar login al iniciar
+    _reiniciar_login()
 
 ft.app(target=main, assets_dir="assets")

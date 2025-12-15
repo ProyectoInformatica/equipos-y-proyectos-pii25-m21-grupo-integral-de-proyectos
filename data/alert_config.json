@@ -1,7 +1,7 @@
 {
-    "temp_max": 22,
+    "temp_max": 23,
     "hum_max": 45,
-    "iaq_max": 50,
-    "humo_max": 5,
+    "iaq_max": 25,
+    "humo_max": 10,
     "viento_max": 15
 }

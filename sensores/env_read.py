@@ -74,7 +74,7 @@ def update_json_file(filepath, new_value):
         print(f"Error en {filepath}: {e}")
 
 def main():
-    print("--- Estación Meteorológica (Datos Suaves) ---")
+    print("Estación Meteorológica Iniciada")
     os.makedirs(DATA_DIR, exist_ok=True)
     while True:
         sensors = simulate_smooth_values()

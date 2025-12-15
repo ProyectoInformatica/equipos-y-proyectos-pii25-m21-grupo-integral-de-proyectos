@@ -32,7 +32,7 @@ def calculate_smooth_wind():
     return round(current_speed, 2)
 
 def main():
-    print("--- Sensor de Viento (Simulación Realista) ---")
+    print("Sensor de Viento Iniciado")
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     
     while True:

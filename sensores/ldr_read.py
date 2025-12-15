@@ -30,12 +30,12 @@ def update_light_data(new_luminosity):
         os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"[Sensor LDR] Luz: {new_luminosity}%")
+        print(f"Sensor LDR Luz: {new_luminosity}%")
     except Exception as e:
-        print(f"[Error LDR] {e}")
+        print(f"Error LDR {e}")
 
 def main():
-    print("--- Sensor LDR (Suave) ---")
+    print("Sensor LDR Iniciado")
     while True:
         lux = simulate_light()
         update_light_data(lux)
