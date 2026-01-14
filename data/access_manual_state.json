@@ -1,0 +1,10 @@
+{
+    "norte": {
+        "modo_manual": false,
+        "abrir": false
+    },
+    "sur": {
+        "modo_manual": false,
+        "abrir": false
+    }
+}

@@ -1,0 +1,302 @@
+[
+    {
+        "hora": "2026-01-14 23:50:57",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 31",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:50:57",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 20.7 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:50:47",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 37",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:50:47",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 20.7 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:50:42",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 41",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:50:42",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 21.96 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:50:37",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 46",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:50:37",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 24.85 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:50:05",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 30",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:50:05",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 20.61 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:49:04",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 60",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:48:01",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 90",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:47:00",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 73",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:45:58",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 34",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:44:58",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 56",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:42:41",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 41",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:42:41",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 20.78 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:42:36",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 42",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:42:36",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 21.15 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:42:31",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 47",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:42:31",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 21.28 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:42:15",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 58",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:41:15",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 31",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:40:15",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 25",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:40:15",
+        "titulo": "Incendio Detectado",
+        "mensaje": "Nivel de humo: 7",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:40:10",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 20",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:40:10",
+        "titulo": "Incendio Detectado",
+        "mensaje": "Nivel de humo: 12",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:40:05",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 20",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:40:05",
+        "titulo": "Incendio Detectado",
+        "mensaje": "Nivel de humo: 17",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:40:00",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 21",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:40:00",
+        "titulo": "Incendio Detectado",
+        "mensaje": "Nivel de humo: 22",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:39:50",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 29",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:38:49",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 20",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:37:48",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 32",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:36:48",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 61",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:44",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 20",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:44",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 38.94 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:39",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 20",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:39",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 40.51 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:34",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 23",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:34",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 42.39 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:29",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 27",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:29",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 42.96 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:24",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 29",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:24",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 41.66 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:19",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 31",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:19",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 40.6 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:14",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 35",
+        "nivel": "advertencia"
+    },
+    {
+        "hora": "2026-01-14 23:35:14",
+        "titulo": "Viento Peligroso",
+        "mensaje": "Velocidad: 39.15 km/h",
+        "nivel": "cr\u00edtico"
+    },
+    {
+        "hora": "2026-01-14 23:35:09",
+        "titulo": "Mala Calidad Aire",
+        "mensaje": "IAQ: 38",
+        "nivel": "advertencia"
+    }
+]
