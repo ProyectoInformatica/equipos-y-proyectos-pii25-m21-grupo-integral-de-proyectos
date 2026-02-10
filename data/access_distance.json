@@ -1,0 +1,8 @@
+{
+    "norte": {
+        "distance_cm": 50
+    },
+    "sur": {
+        "distance_cm": 500
+    }
+}

@@ -1,0 +1,112 @@
+[
+    {
+        "hora": "2026-01-14 23:51:11",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "NORTE"
+    },
+    {
+        "hora": "2026-01-14 23:50:59",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "SUR"
+    },
+    {
+        "hora": "2026-01-14 23:50:42",
+        "evento": "Acceso Permitido",
+        "tipo": "Apertura Manual",
+        "barrera": "SUR"
+    },
+    {
+        "hora": "2026-01-14 23:50:06",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "SUR"
+    },
+    {
+        "hora": "2026-01-14 23:50:03",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "NORTE"
+    },
+    {
+        "hora": "2026-01-14 23:49:46",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "NORTE"
+    },
+    {
+        "hora": "2026-01-14 23:49:36",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "SUR"
+    },
+    {
+        "hora": "2026-01-14 23:49:30",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "NORTE"
+    },
+    {
+        "hora": "2026-01-14 23:49:14",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "NORTE"
+    },
+    {
+        "hora": "2026-01-14 23:49:06",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado",
+        "barrera": "SUR"
+    },
+    {
+        "hora": "2025-12-11 19:59:54",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:59:44",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:59:14",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:58:46",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:58:24",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:58:08",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:57:28",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:57:18",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:57:04",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    },
+    {
+        "hora": "2025-12-11 19:56:56",
+        "evento": "Acceso Permitido",
+        "tipo": "Veh\u00edculo Detectado"
+    }
+]

@@ -1,0 +1,12 @@
+{
+    "horario_apertura_automatico": {
+        "inicio": "07:00",
+        "fin": "23:00"
+    },
+    "reglas_emergencia": {
+        "abrir_si_inundacion": true,
+        "abrir_si_incendio": true,
+        "cerrar_si_viento_fuerte": false
+    },
+    "modo_mantenimiento": false
+}

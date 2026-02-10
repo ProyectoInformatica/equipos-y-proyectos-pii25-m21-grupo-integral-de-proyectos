@@ -1,0 +1,12 @@
+{
+    "norte": {
+        "barrera_abierta": true,
+        "mensaje": "BARRERA ABIERTA (AUTO)",
+        "distancia_detectada": 50
+    },
+    "sur": {
+        "barrera_abierta": false,
+        "mensaje": "BARRERA CERRADA (AUTO)",
+        "distancia_detectada": 500
+    }
+}
