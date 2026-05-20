@@ -1,4 +1,14 @@
 import flet as ft
+import sys
+import os
+
+# Asegurar que la base de datos se inicialice al inicio
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+from database import get_connection  # Esto inicializa la BD automáticamente
+
+# Inicializar la conexión (y por tanto la BD) al importar
+_ = get_connection()
 
 from controllers.navigation_controller import NavigationController
 
@@ -11,6 +21,11 @@ from views.recursos_view import RecursosView
 from views.dashboard_view import DashboardView
 from views.notifications_view import NotificationsView
 from views.map_view import MapView
+from views.crear_peticion_view import CrearPeticionView
+from views.mis_peticiones_view import MisPeticionesView
+from views.gestion_peticiones_view import GestionPeticionesView
+from views.registrar_cliente_view import RegistrarClienteView
+from views.biordinario_view import BiordinarioView
 
 def main(page: ft.Page):
     page.window.maximized = True
@@ -35,30 +50,42 @@ def main(page: ft.Page):
             margin=ft.Margin(0, 10, 10, 10) 
         )
 
-        # 2. Instanciar vistas
-        views = {
-            "mapa": MapView(page), 
-            "iluminacion": IluminacionView(page, usuario),
-            "ambiental": AmbientalView(page, usuario),
-            "emergencias": EmergenciasView(page, usuario),
-            "acceso": AccesoView(page),
-            "recursos": RecursosView(page),
-            "dashboard": DashboardView(page),
-            "notificaciones": NotificationsView(page)
-        }
+        # 2. Instanciar vistas según el rol
+        if usuario["role"] == "cliente":
+            # Vistas para cliente
+            views = {
+                "crear_peticion": lambda: CrearPeticionView(page, usuario),
+                "mis_peticiones": lambda: MisPeticionesView(page, usuario)
+            }
+        else:
+            # Vistas para admin/tecnico
+            views = {
+                "mapa": lambda: MapView(page), 
+                "iluminacion": lambda: IluminacionView(page, usuario),
+                "ambiental": lambda: AmbientalView(page, usuario),
+                "emergencias": lambda: EmergenciasView(page, usuario),
+                "acceso": lambda: AccesoView(page),
+                "recursos": lambda: RecursosView(page),
+                "dashboard": lambda: DashboardView(page),
+                "notificaciones": lambda: NotificationsView(page),
+                "gestion_peticiones": lambda: GestionPeticionesView(page, usuario),
+                "registrar_cliente": lambda: RegistrarClienteView(page, usuario),
+                "biordinario": lambda: BiordinarioView(page)
+            }
 
         # 3. Controlador de navegación
         controller = NavigationController(page, content_container, views)
 
         # 4. Header (Sidebar lateral)
+        # Estructura: Logo + Info + Menú (scrollable) + Cerrar sesión (fijo abajo)
         header = ft.Container(
             content=ft.Column(
                 [
-                    # LOGO
+                    # LOGO (fijo arriba)
                     ft.Row([ft.Image(src="logo.png", width=120)], alignment=ft.MainAxisAlignment.CENTER),
                     ft.Divider(height=20, color="#cccccc"),
 
-                    # INFO USUARIO (NUEVO)
+                    # INFO USUARIO (fijo)
                     ft.Container(
                         content=ft.Column([
                             ft.Text(f"{usuario['name']}", weight="bold", size=14, text_align="center"),
@@ -68,25 +95,20 @@ def main(page: ft.Page):
                     ),
                     ft.Divider(height=10, color="#cccccc"),
 
-                    # MENÚ
-                    ft.Column(
-                        [
-                            _crear_boton_menu("Dashboard", "icon_dashboard.png", "dashboard", controller),
-                            _crear_boton_menu("Mapa de Zona", "icon_mapa.png", "mapa", controller),
-                            _crear_boton_menu("Control iluminación", "icon_iluminacion.png", "iluminacion", controller),
-                            _crear_boton_menu("Control ambiental", "icon_ambiental.png", "ambiental", controller),
-                            _crear_boton_menu("Gestión emergencias", "icon_emergencias.png", "emergencias", controller),
-                            _crear_boton_menu("Control acceso", "icon_acceso.png", "acceso", controller),
-                            _crear_boton_menu("Gestión recursos", "icon_recursos.png", "recursos", controller),
-                            _crear_boton_menu("Notificaciones", "icon_notificaciones.png", "notificaciones", controller)
-                        ],
-                        spacing=5
+                    # MENÚ (scrollable si es muy largo)
+                    ft.Container(
+                        content=ft.Column(
+                            _crear_menu_segun_rol(usuario["role"], controller),
+                            spacing=5,
+                            scroll=ft.ScrollMode.AUTO
+                        ),
+                        expand=True
                     ),
 
-                    ft.Container(expand=True),
+                    # Separador
                     ft.Divider(height=20, color="#cccccc"),
 
-                    # CERRAR SESIÓN (Recargar página simulado)
+                    # CERRAR SESIÓN (fijo abajo, siempre visible)
                     ft.Row(
                         [
                             ft.Image(src="icon_usuario.png", width=25),
@@ -98,7 +120,8 @@ def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.START
                     )
                 ],
-                expand=True
+                expand=True,
+                spacing=0
             ),
             bgcolor="#ffffff",
             border_radius=10,
@@ -108,7 +131,12 @@ def main(page: ft.Page):
         )
 
         main_container.content = ft.Row([header, content_container], vertical_alignment=ft.CrossAxisAlignment.START)
-        controller.go("dashboard")
+        
+        # Ir a la vista inicial según el rol
+        if usuario["role"] == "cliente":
+            controller.go("crear_peticion")
+        else:
+            controller.go("dashboard")
         page.update()
 
     def _crear_boton_menu(texto, icono, vista, controller):
@@ -116,6 +144,34 @@ def main(page: ft.Page):
             ft.Image(src=icono, width=25),
             ft.TextButton(content=ft.Text(texto, color="black"), on_click=lambda e: controller.go(vista))
         ])
+    
+    def _crear_menu_segun_rol(rol, controller):
+        """Crea el menú según el rol del usuario"""
+        if rol == "cliente":
+            return [
+                _crear_boton_menu("Crear Petición", "icon_notificaciones.png", "crear_peticion", controller),
+                _crear_boton_menu("Mis Peticiones", "icon_notificaciones.png", "mis_peticiones", controller)
+            ]
+        else:
+            # Menú para admin/tecnico
+            menu_items = [
+                _crear_boton_menu("Dashboard", "icon_dashboard.png", "dashboard", controller),
+                _crear_boton_menu("Mapa de Zona", "icon_mapa.png", "mapa", controller),
+                _crear_boton_menu("Control iluminación", "icon_iluminacion.png", "iluminacion", controller),
+                _crear_boton_menu("Control ambiental", "icon_ambiental.png", "ambiental", controller),
+                _crear_boton_menu("Gestión emergencias", "icon_emergencias.png", "emergencias", controller),
+                _crear_boton_menu("Control acceso", "icon_acceso.png", "acceso", controller),
+                _crear_boton_menu("Gestión recursos", "icon_recursos.png", "recursos", controller),
+                _crear_boton_menu("Notificaciones", "icon_notificaciones.png", "notificaciones", controller),
+                _crear_boton_menu("Sensor Biordinario", "icon_ambiental.png", "biordinario", controller)
+            ]
+            
+            # Solo admin puede gestionar peticiones y registrar usuarios
+            if rol == "admin":
+                menu_items.append(_crear_boton_menu("Gestión Peticiones", "icon_notificaciones.png", "gestion_peticiones", controller))
+                menu_items.append(_crear_boton_menu("Registrar Usuario", "icon_usuario.png", "registrar_cliente", controller))
+            
+            return menu_items
 
     def _reiniciar_login():
         # Limpiar y volver a cargar login
