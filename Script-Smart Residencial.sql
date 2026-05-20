@@ -42,6 +42,16 @@ CREATE TABLE `Sensores` (
   PRIMARY KEY (`Id_Sensor`)
 );
 
+-- Sensor biordinario: valor numérico + carácter alfanumérico en cada lectura
+CREATE TABLE `Sensores_Biordinarios` (
+  `Id_Registro`        INT          NOT NULL AUTO_INCREMENT,
+  `ValorNumerico`      INT          NOT NULL,
+  `ValorAlfanumerico`  CHAR(1)      NOT NULL,
+  `Fecha`              DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Activo`             TINYINT(1)   NOT NULL DEFAULT 1,
+  PRIMARY KEY (`Id_Registro`)
+);
+
 -- Tabla de Notificaciones generadas por sensores
 CREATE TABLE `Notificaciones` (
   `Id`       INT          NOT NULL AUTO_INCREMENT,

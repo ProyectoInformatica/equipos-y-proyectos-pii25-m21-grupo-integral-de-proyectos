@@ -568,6 +568,47 @@ def update_request_status(request_id: int, nuevo_estado: str) -> bool:
     finally:
         conn.close()
 
+# ==================== SENSOR BIORDINARIO ====================
+def add_biordinario_sensor_data(valor_numerico: int, valor_alfanumerico: str) -> None:
+    """Inserta lectura del sensor biordinario (entero + un carácter)."""
+    char_val = (valor_alfanumerico or "?")[0]
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO Sensores_Biordinarios (ValorNumerico, ValorAlfanumerico, Fecha, Activo) "
+            "VALUES (%s, %s, NOW(), 1)",
+            (int(valor_numerico), char_val),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_biordinario_sensor_data(limit: int = 24) -> List[Dict]:
+    conn = get_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(f"""
+            SELECT ValorNumerico AS valor_numerico,
+                   ValorAlfanumerico AS valor_alfanumerico,
+                   Fecha AS hora
+            FROM Sensores_Biordinarios
+            WHERE Activo = 1
+            ORDER BY Fecha DESC
+            LIMIT {int(limit)}
+        """)
+        rows = cursor.fetchall()
+        return [
+            {
+                "valor_numerico": r["valor_numerico"],
+                "valor_alfanumerico": r["valor_alfanumerico"],
+                "hora": str(r["hora"]),
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
 def clean_sensor_data(sensor_type: str, max_records: int = 24, category: str = 'sensor'):
     pass
 
