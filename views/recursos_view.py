@@ -60,6 +60,7 @@ class RecursosView(ft.Container):
     def __init__(self, page):
         super().__init__(expand=True)
         self.page = page
+        self.activo = True
 
         # IMÁGENES DE GRÁFICAS
         # Iniciamos con una imagen transparente o placeholder
@@ -129,6 +130,7 @@ class RecursosView(ft.Container):
         def loop():
             while True:
                 time.sleep(2) # Actualización más rápida
+                if not getattr(self, 'activo', True): break
                 if self.page:
                     refrescar_datos()
         
@@ -177,3 +179,6 @@ class RecursosView(ft.Container):
     def _generar_placeholder(self):
         """Genera una imagen blanca pequeña en base64 para evitar errores de carga inicial"""
         return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+
+    def matar_hilos(self):
+        self.activo = False

@@ -1,11 +1,13 @@
-import json
 import time
 import random
 import os
-from datetime import datetime
+import sys
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_FILE = os.path.join(BASE_DIR, "data", "envhumo.json")
+sys.path.insert(0, BASE_DIR)
+from database import add_sensor_data
+
 MAX_RECORDS = 24
 
 # Nivel base
@@ -30,22 +32,10 @@ def simulate_smoke():
 
 def main():
     print("Sensor de Humo Iniciado")
-    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     
     while True:
         level = simulate_smoke()
-        
-        data = []
-        if os.path.exists(DATA_FILE):
-            try:
-                with open(DATA_FILE, 'r') as f: data = json.load(f)
-            except: data = []
-
-        data.append({"hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "value": level})
-        if len(data) > MAX_RECORDS: data = data[-MAX_RECORDS:]
-
-        with open(DATA_FILE, "w") as f: json.dump(data, f, indent=4)
-        
+        add_sensor_data("humo", level)
         print(f"Humo Nivel: {level}")
         time.sleep(5)
 

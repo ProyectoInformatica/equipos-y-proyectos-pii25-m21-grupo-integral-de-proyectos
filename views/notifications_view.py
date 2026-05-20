@@ -1,16 +1,19 @@
 import flet as ft
-import json
 import os
+import sys
 import threading
 import time
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-NOTIFICATIONS_FILE = os.path.join(BASE_DIR, "data", "notifications.json")
+sys.path.insert(0, BASE_DIR)
+from controllers.notificaciones_controller import NotificacionesController
 
 class NotificationsView(ft.Container):
     def __init__(self, page):
         super().__init__(expand=True, padding=20)
         self.page = page
+        self.activo = True
         
         self.lista_alertas = ft.Column(scroll=ft.ScrollMode.AUTO, spacing=10)
 
@@ -46,14 +49,16 @@ class NotificationsView(ft.Container):
         threading.Thread(target=self._update_loop, daemon=True).start()
 
     def _leer_notificaciones(self):
-        if not os.path.exists(NOTIFICATIONS_FILE): return []
         try:
-            with open(NOTIFICATIONS_FILE, "r") as f: return json.load(f)
-        except: return []
+            return NotificacionesController.obtener_notificaciones(50)
+        except:
+            return []
 
     def borrar_historial(self, e):
         try:
-            with open(NOTIFICATIONS_FILE, "w") as f: json.dump([], f)
+            resultado = NotificacionesController.limpiar_notificaciones()
+            if not resultado["success"]:
+                print(f"Error limpiando notificaciones: {resultado['message']}")
             self.page.snack_bar = ft.SnackBar(ft.Text("Historial borrado"))
             self.page.snack_bar.open = True
             self.page.update()
@@ -112,9 +117,13 @@ class NotificationsView(ft.Container):
 
     def _update_loop(self):
         while True:
+            if not getattr(self, 'activo', True): break
             if self.page:
                 try:
                     self._refrescar_ui()
                 except:
                     pass
             time.sleep(3)
+
+    def matar_hilos(self):
+        self.activo = False

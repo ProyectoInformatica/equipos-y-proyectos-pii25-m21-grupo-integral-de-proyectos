@@ -1,17 +1,13 @@
-import json
 import time
 import random
 import os
-from datetime import datetime
+import sys
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+sys.path.insert(0, BASE_DIR)
+from database import add_sensor_data
 
-FILES = {
-    "temp": os.path.join(DATA_DIR, "envtemperatura.json"),
-    "hum": os.path.join(DATA_DIR, "envhumedad.json"),
-    "iaq": os.path.join(DATA_DIR, "envcalidadaire.json")
-}
 MAX_RECORDS = 24
 
 # Valores iniciales (para empezar la simulación)
@@ -53,35 +49,21 @@ def simulate_smooth_values():
         "iaq": int(current_values["iaq"])
     }
 
-def update_json_file(filepath, new_value):
-    data = []
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, "r") as f:
-                data = json.load(f)
-        except:
-            data = []
-    
-    new_record = {"hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "value": new_value}
-    data.append(new_record)
-    if len(data) > MAX_RECORDS:
-        data = data[-MAX_RECORDS:]
-        
+def update_sensor_data(sensor_type, new_value):
+    """Actualiza los datos del sensor en la base de datos"""
     try:
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
+        add_sensor_data(sensor_type, new_value)
     except Exception as e:
-        print(f"Error en {filepath}: {e}")
+        print(f"Error guardando {sensor_type}: {e}")
 
 def main():
     print("Estación Meteorológica Iniciada")
-    os.makedirs(DATA_DIR, exist_ok=True)
     while True:
         sensors = simulate_smooth_values()
         print(f"[Ambiente] T:{sensors['temp']}°C | H:{sensors['hum']}% | Aire:{sensors['iaq']}")
-        update_json_file(FILES["temp"], sensors["temp"])
-        update_json_file(FILES["hum"], sensors["hum"])
-        update_json_file(FILES["iaq"], sensors["iaq"])
+        update_sensor_data("temp", sensors["temp"])
+        update_sensor_data("hum", sensors["hum"])
+        update_sensor_data("iaq", sensors["iaq"])
         time.sleep(5)
 
 if __name__ == "__main__":

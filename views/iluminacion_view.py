@@ -1,13 +1,16 @@
 import flet as ft
 import threading
 import time
+import os
+from datetime import datetime
 from controllers.data_controller import DataController
 from controllers.scheduler import guardar_horario
 
 class IluminacionView(ft.Container):
-    def __init__(self, page):
+    def __init__(self, page, usuarioApp):
         super().__init__(expand=True)
         self.page = page
+        self.activo = True
 
         # CONTROLES 
         control_op = ft.Text("Control por: ", weight=ft.FontWeight.BOLD)
@@ -16,8 +19,16 @@ class IluminacionView(ft.Container):
         luminosidad_op_val = ft.Text("0")
 
         light_on = ft.Switch(value=False)
-        umbral = ft.Slider(min=0, max=100, divisions=20, label="{value}", value=50)
-        umbral_text = ft.Text("Umbral actual: 50")
+        
+        # Cargar umbral desde light_config al iniciar usando DataController
+        umbral_inicial = 50
+        try:
+            umbral_inicial = DataController.obtener_umbral_luminosidad()
+        except Exception as ex:
+            print(f"Error cargando umbral: {ex}")
+        
+        umbral = ft.Slider(min=0, max=100, divisions=20, label="{value}", value=umbral_inicial)
+        umbral_text = ft.Text(f"Umbral actual: {umbral_inicial}")
         light_status = ft.Text("", color="red", weight="bold")
 
         mapa = ft.Image(src="mapa_iluminacion_off.jpg", expand=True, fit=ft.ImageFit.COVER)
@@ -38,23 +49,58 @@ class IluminacionView(ft.Container):
                         mapa.src = "mapa_iluminacion_on.jpg"
                         light_status.value = "Luces ENCENDIDAS (Por Sensor)"
                         light_status.color = "green"
+                        DataController.guardar_estado_luz_automatico("on", "UMBRAL")
                     else:
                         mapa.src = "mapa_iluminacion_off.jpg"
                         light_status.value = "Luces APAGADAS (Por Sensor)"
                         light_status.color = "red"
+                        DataController.guardar_estado_luz_automatico("off", "UMBRAL")
 
                 elif modo == "Horario":
-                    # Lógica visual para Horario (Leemos el estado real del scheduler)
-                    estado_real = DataController.obtener_estado_luz()
-                    
-                    if estado_real == "on":
-                        mapa.src = "mapa_iluminacion_on.jpg"
-                        light_status.value = "Luces ENCENDIDAS (Por Horario)"
-                        light_status.color = "green"
-                    else:
-                        mapa.src = "mapa_iluminacion_off.jpg"
-                        light_status.value = "Luces APAGADAS (Por Horario)"
-                        light_status.color = "red"
+                    # Lógica visual para Horario (Calculamos si debería estar encendido)
+                    try:
+                        schedule_data = DataController.obtener_horario()
+                        h_ini = int(schedule_data.get("hora_inicio", 0))
+                        m_ini = int(schedule_data.get("minuto_inicio", 0))
+                        h_fin = int(schedule_data.get("hora_fin", 0))
+                        m_fin = int(schedule_data.get("minuto_fin", 0))
+                        
+                        ahora = datetime.now()
+                        inicio_min = h_ini * 60 + m_ini
+                        fin_min = h_fin * 60 + m_fin
+                        actual_min = ahora.hour * 60 + ahora.minute
+                        
+                        # Calcular si está dentro del horario
+                        dentro_horario = False
+                        if fin_min < inicio_min:  # Cruza medianoche
+                            dentro_horario = actual_min >= inicio_min or actual_min < fin_min
+                        else:
+                            dentro_horario = inicio_min <= actual_min < fin_min
+                        
+                        estado_esperado = "on" if dentro_horario else "off"
+                        
+                        if estado_esperado == "on":
+                            mapa.src = "mapa_iluminacion_on.jpg"
+                            light_status.value = "Luces ENCENDIDAS (Por Horario)"
+                            light_status.color = "green"
+                            DataController.guardar_estado_luz_automatico("on", "HORARIO")
+                        else:
+                            mapa.src = "mapa_iluminacion_off.jpg"
+                            light_status.value = "Luces APAGADAS (Por Horario)"
+                            light_status.color = "red"
+                            DataController.guardar_estado_luz_automatico("off", "HORARIO")
+                    except Exception as e:
+                        print(f"Error calculando horario: {e}")
+                        # Fallback: leer estado actual
+                        estado_real = DataController.obtener_estado_luz()
+                        if estado_real == "on":
+                            mapa.src = "mapa_iluminacion_on.jpg"
+                            light_status.value = "Luces ENCENDIDAS (Por Horario)"
+                            light_status.color = "green"
+                        else:
+                            mapa.src = "mapa_iluminacion_off.jpg"
+                            light_status.value = "Luces APAGADAS (Por Horario)"
+                            light_status.color = "red"
                 
                 # (Si es Manual, no tocamos nada, el Switch manda)
                 
@@ -66,6 +112,7 @@ class IluminacionView(ft.Container):
         def ciclo_actualizacion_automatica():
             while True:
                 time.sleep(2)
+                if not getattr(self, 'activo', True): break
                 if page: actualizar_interfaz_datos()
 
         threading.Thread(target=ciclo_actualizacion_automatica, daemon=True).start()
@@ -80,16 +127,30 @@ class IluminacionView(ft.Container):
             mapa.src = "mapa_iluminacion_on.jpg" if light_on.value else "mapa_iluminacion_off.jpg"
             light_status.value = "Control Manual"
             light_status.color = "blue"
+            DataController.guardar_estado_luz_manual("on" if light_on.value else "off")
             page.update()
 
         light_on.on_change = toggle_light
 
         def control_automatico_click(e):
             cambiar_modo("Umbral")
+            # Guardar umbral usando DataController
+            try:
+                resultado = DataController.guardar_umbral_luminosidad(int(umbral.value))
+                if not resultado["success"]:
+                    print(f"Error guardando umbral: {resultado['message']}")
+            except Exception as ex:
+                print(f"Error guardando umbral: {ex}")
             actualizar_interfaz_datos()
 
         def cambiar_umbral(e):
             umbral_text.value = f"Umbral actual: {int(umbral.value)}"
+            # Guardar umbral en light_config cuando cambia
+            from database import set_light_config
+            try:
+                set_light_config("umbral_luminosidad", str(int(umbral.value)))
+            except Exception as ex:
+                print(f"Error guardando umbral: {ex}")
             if control_op_val.value == "Umbral": actualizar_interfaz_datos()
             else: page.update()
 
@@ -100,22 +161,48 @@ class IluminacionView(ft.Container):
         horas = [f"{i:02d}" for i in range(24)]
         minutos = [f"{i:02d}" for i in range(0, 60, 5)]
         
-        inicio_hora = ft.Dropdown(label="Hora inicio", options=[ft.dropdown.Option(h) for h in horas], value="19", expand=1)
-        inicio_minuto = ft.Dropdown(label="Minuto inicio", options=[ft.dropdown.Option(m) for m in minutos], value="30", expand=1)
-        fin_hora = ft.Dropdown(label="Hora fin", options=[ft.dropdown.Option(h) for h in horas], value="06", expand=1)
-        fin_minuto = ft.Dropdown(label="Minuto fin", options=[ft.dropdown.Option(m) for m in minutos], value="30", expand=1)
+        # Cargar horario desde la base de datos usando DataController
+        horario_actual = DataController.obtener_horario()
+        h_ini_default = f"{horario_actual.get('hora_inicio', 19):02d}"
+        m_ini_default = f"{horario_actual.get('minuto_inicio', 30):02d}"
+        h_fin_default = f"{horario_actual.get('hora_fin', 6):02d}"
+        m_fin_default = f"{horario_actual.get('minuto_fin', 30):02d}"
+        
+        inicio_hora = ft.Dropdown(label="Hora inicio", options=[ft.dropdown.Option(h) for h in horas], value=h_ini_default, expand=1)
+        inicio_minuto = ft.Dropdown(label="Minuto inicio", options=[ft.dropdown.Option(m) for m in minutos], value=m_ini_default, expand=1)
+        fin_hora = ft.Dropdown(label="Hora fin", options=[ft.dropdown.Option(h) for h in horas], value=h_fin_default, expand=1)
+        fin_minuto = ft.Dropdown(label="Minuto fin", options=[ft.dropdown.Option(m) for m in minutos], value=m_fin_default, expand=1)
 
         def accion_confirmar_horario(e):
             cambiar_modo("Horario")
             h_ini, m_ini = inicio_hora.value, inicio_minuto.value
             h_fin, m_fin = fin_hora.value, fin_minuto.value
 
-            if guardar_horario(h_ini, m_ini, h_fin, m_fin):
+            # Validar que todos los valores estén presentes
+            if h_ini is None or m_ini is None or h_fin is None or m_fin is None:
+                page.snack_bar = ft.SnackBar(ft.Text("Por favor, completa todos los campos del horario"), bgcolor="red")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            # Convertir a enteros y validar
+            try:
+                h_ini_int = int(h_ini)
+                m_ini_int = int(m_ini)
+                h_fin_int = int(h_fin)
+                m_fin_int = int(m_fin)
+            except (ValueError, TypeError):
+                page.snack_bar = ft.SnackBar(ft.Text("Error: valores de horario inválidos"), bgcolor="red")
+                page.snack_bar.open = True
+                page.update()
+                return
+
+            if guardar_horario(h_ini_int, m_ini_int, h_fin_int, m_fin_int):
                 page.snack_bar = ft.SnackBar(ft.Text(f"Horario activo: {h_ini}:{m_ini} a {h_fin}:{m_fin}"), bgcolor="green")
                 light_status.value = "Esperando sincronización..."
                 light_status.color = "orange"
             else:
-                page.snack_bar = ft.SnackBar(ft.Text("Error al guardar"), bgcolor="red")
+                page.snack_bar = ft.SnackBar(ft.Text("Error al guardar horario"), bgcolor="red")
             
             page.snack_bar.open = True
             page.update()
@@ -165,18 +252,48 @@ class IluminacionView(ft.Container):
             bgcolor="#ffffff", border_radius=10, expand=True
         )
 
-        main_content = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Container(content=ft.Text("Iluminación inteligente de calles y zonas comunes", size=24, weight="bold"),
-                        bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
-                ]),
-                ft.Row([panel_mapa]),
-                ft.Row([panel_op_control, panel_op_luminosidad]),
-                ft.Row([control_panel_manual, control_panel_umbral, control_panel_horario],
-                    vertical_alignment=ft.CrossAxisAlignment.START)
-                ], scroll=ft.ScrollMode.ADAPTIVE, expand=True
-            ), expand=True
-        )
+        if usuarioApp["role"] != "admin":
+            main_content = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Container(content=ft.Text("Iluminación inteligente de calles y zonas comunes", size=24, weight="bold"),
+                            bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([panel_mapa]),
+                    ft.Row([panel_op_control, panel_op_luminosidad]),
+                    ], scroll=ft.ScrollMode.ADAPTIVE, expand=True
+                ), expand=True
+            )
+        else:
+            main_content = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Container(content=ft.Text("Iluminación inteligente de calles y zonas comunes", size=24, weight="bold"),
+                            bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([panel_mapa]),
+                    ft.Row([panel_op_control, panel_op_luminosidad]),
+                    ft.Row([control_panel_manual, control_panel_umbral, control_panel_horario],
+                        vertical_alignment=ft.CrossAxisAlignment.START)
+                    ], scroll=ft.ScrollMode.ADAPTIVE, expand=True
+                ), expand=True
+            )
+
+        # main_content = ft.Container(
+        #     content=ft.Column([
+        #         ft.Row([
+        #             ft.Container(content=ft.Text("Iluminación inteligente de calles y zonas comunes" + usuarioApp["role"], size=24, weight="bold"),
+        #                 bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+        #         ]),
+        #         ft.Row([panel_mapa]),
+        #         ft.Row([panel_op_control, panel_op_luminosidad]),
+        #         ft.Row([control_panel_manual, control_panel_umbral, control_panel_horario],
+        #             vertical_alignment=ft.CrossAxisAlignment.START)
+        #         ], scroll=ft.ScrollMode.ADAPTIVE, expand=True
+        #     ), expand=True
+        # )
 
         self.content = main_content
+
+    def matar_hilos(self):
+        self.activo = False

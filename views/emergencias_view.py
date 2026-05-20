@@ -14,33 +14,42 @@ matplotlib.use('Agg')
 def generar_grafica(x, y, titulo, ylabel):
     if not x or not y: return ""
     fig, ax = plt.subplots(figsize=(6, 3))
-    colorGraf = "#458ce9" if ylabel == "km/h" else "darkblue"
+    try:
+        colorGraf = "#458ce9" if ylabel == "km/h" else "darkblue"
 
-    ax.plot(x, y, marker="o", color=colorGraf)
-    ax.set_title(titulo)
-    ax.set_xlabel("Hora")
-    ax.set_ylabel(ylabel)
-    ax.grid(True)
-    plt.xticks(rotation=45)
-    
-    if len(x) > 10:
-        ax.set_xticks(range(0, len(x), 4))
-        ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+        if len(x) != len(y):
+            min_len = min(len(x), len(y))
+            x = x[:min_len]
+            y = y[:min_len]
 
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    plt.close(fig)
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode()
+        ax.plot(x, y, marker="o", color=colorGraf)
+        ax.set_title(titulo)
+        ax.set_xlabel("Hora")
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+        plt.xticks(rotation=45)
+        
+        if len(x) > 10:
+            ax.set_xticks(range(0, len(x), 4))
+            ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode()
+    finally:
+        plt.close(fig)
 
 
 class EmergenciasView(ft.Container):
-    def __init__(self, page):
+    def __init__(self, page, usuarioApp):
         super().__init__(expand=True)
         self.page = page
+        self.activo = True
 
-        self.img_viento = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
-        self.img_humo = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        empty_png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        self.img_viento = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        self.img_humo = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
 
         config_actual = DataController.obtener_config_alertas()
 
@@ -93,6 +102,7 @@ class EmergenciasView(ft.Container):
         def auto_refresh_loop():
             while True:
                 time.sleep(10)
+                if not getattr(self, 'activo', True): break
                 try: cargar_datos()
                 except: pass
         
@@ -102,16 +112,10 @@ class EmergenciasView(ft.Container):
         btn_humo = ft.ElevatedButton("Guardar Configuración", on_click=guardar_y_actualizar)
         btn_viento = ft.ElevatedButton("Guardar Configuración", on_click=guardar_y_actualizar)
 
-        check_mail = ft.Checkbox(label="Notificar por correo")
-        check_tel = ft.Checkbox(label="Notificar por teléfono")
-        check_mail_v = ft.Checkbox(label="Notificar por correo")
-        check_tel_v = ft.Checkbox(label="Notificar por teléfono")
-
         control_panel_humo = ft.Container(
             content=ft.Column([
                 ft.Text("Alerta por humo", size=16, weight="bold"),
-                self.txt_humo, self.umbral_humo,
-                check_mail, check_tel, btn_humo
+                self.txt_humo, self.umbral_humo, btn_humo
             ], spacing=10, horizontal_alignment="center"), 
             padding=20, bgcolor="#ffffff", border_radius=10, expand=1
         )
@@ -119,24 +123,43 @@ class EmergenciasView(ft.Container):
         control_panel_viento = ft.Container(
             content=ft.Column([
                 ft.Text("Alerta por viento", size=16, weight="bold"),
-                self.txt_viento, self.umbral_viento,
-                check_mail_v, check_tel_v, btn_viento
+                self.txt_viento, self.umbral_viento, btn_viento
             ], spacing=10, horizontal_alignment="center"), 
             padding=20, bgcolor="#ffffff", border_radius=10, expand=1
         )
 
-        self.content = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Container(content=ft.Text("Gestión de emergencias y seguridad", size=24, weight="bold"),
-                            bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
-                ]),
-                ft.Row([self.img_viento, self.img_humo]),
-                ft.Row([
-                    ft.Container(content=ft.Text("Configuración de alertas", size=16, weight="bold"),
-                            bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
-                ]),
-                ft.Row([control_panel_viento, control_panel_humo],vertical_alignment=ft.CrossAxisAlignment.START),
-                ], scroll=ft.ScrollMode.ADAPTIVE
+        if usuarioApp["role"] != "admin":
+            self.content = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Container(content=ft.Text("Gestión de emergencias y seguridad", size=24, weight="bold"),
+                                bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([self.img_viento, self.img_humo]),
+                    ft.Row([
+                        ft.Container(content=ft.Text("Configuración de alertas", size=16, weight="bold"),
+                                bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([control_panel_humo],vertical_alignment=ft.CrossAxisAlignment.START),
+                    ], scroll=ft.ScrollMode.ADAPTIVE
+                )
             )
-        )
+        else:
+            self.content = ft.Container(
+                content=ft.Column([
+                    ft.Row([
+                        ft.Container(content=ft.Text("Gestión de emergencias y seguridad", size=24, weight="bold"),
+                                bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([self.img_viento, self.img_humo]),
+                    ft.Row([
+                        ft.Container(content=ft.Text("Configuración de alertas", size=16, weight="bold"),
+                                bgcolor="#ffffff", padding=20, border_radius=10, expand=True),   
+                    ]),
+                    ft.Row([control_panel_viento],vertical_alignment=ft.CrossAxisAlignment.START),
+                    ], scroll=ft.ScrollMode.ADAPTIVE
+                )
+            )
+
+    def matar_hilos(self):
+        self.activo = False

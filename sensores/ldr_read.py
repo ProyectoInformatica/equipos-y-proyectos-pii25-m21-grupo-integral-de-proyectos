@@ -1,10 +1,12 @@
-import json
 import time
 import random
 import os
+import sys
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_FILE = os.path.join(BASE_DIR, "data", "light.json")
+sys.path.insert(0, BASE_DIR)
+from database import set_light_sensor
 
 # Empezamos con luz media
 current_lux = 50
@@ -18,18 +20,8 @@ def simulate_light():
     return current_lux
 
 def update_light_data(new_luminosity):
-    data = {}
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r") as f: data = json.load(f)
-        except: data = {}
-    
-    data["luminosity"] = new_luminosity
-    
     try:
-        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-        with open(DATA_FILE, "w") as f:
-            json.dump(data, f, indent=4)
+        set_light_sensor(new_luminosity)
         print(f"Sensor LDR Luz: {new_luminosity}%")
     except Exception as e:
         print(f"Error LDR {e}")

@@ -1,66 +1,64 @@
 import time
-import json
 import os
+import sys
 from datetime import datetime
 
-# Rutas absolutas para evitar errores de "archivo no encontrado"
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCHEDULE_FILE = os.path.join(BASE_DIR, "data", "schedule.json")
-LIGHT_FILE = os.path.join(BASE_DIR, "data", "light.json")
+sys.path.insert(0, BASE_DIR)
+from database import get_schedule, set_schedule, set_light_sensor, get_light_sensor
 
 def leer_horario():
-    """Lee el horario desde data/schedule.json."""
+    """Lee el horario desde la base de datos."""
     try:
-        with open(SCHEDULE_FILE, "r") as f:
-            data = json.load(f)
-            return {
-                "hora_inicio": int(data.get("hora_inicio", 0)),
-                "minuto_inicio": int(data.get("minuto_inicio", 0)),
-                "hora_fin": int(data.get("hora_fin", 0)),
-                "minuto_fin": int(data.get("minuto_fin", 0))
-            }
+        return get_schedule()
     except Exception as e:
         print(f"scheduler Error leyendo horario: {e}")
         return {"hora_inicio": 0, "minuto_inicio": 0, "hora_fin": 0, "minuto_fin": 0}
 
 def guardar_horario(h_ini, m_ini, h_fin, m_fin):
     """
-    Controlador: Recibe los datos de la vista y actualiza el Modelo (JSON).
+    Controlador: Recibe los datos de la vista y actualiza la base de datos.
     """
-    nuevo_horario = {
-        "hora_inicio": str(h_ini),
-        "minuto_inicio": str(m_ini),
-        "hora_fin": str(h_fin),
-        "minuto_fin": str(m_fin)
-    }
-    
     try:
-        with open(SCHEDULE_FILE, "w") as f:
-            json.dump(nuevo_horario, f, indent=4)
-        print(f"scheduler Nuevo horario guardado: {nuevo_horario}")
+        # Validar que todos los valores estén presentes
+        if h_ini is None or m_ini is None or h_fin is None or m_fin is None:
+            print("scheduler Error: valores de horario None")
+            return False
+        
+        # Convertir a enteros
+        h_ini_int = int(h_ini)
+        m_ini_int = int(m_ini)
+        h_fin_int = int(h_fin)
+        m_fin_int = int(m_fin)
+        
+        # Validar rangos
+        if not (0 <= h_ini_int < 24 and 0 <= m_ini_int < 60 and 
+                0 <= h_fin_int < 24 and 0 <= m_fin_int < 60):
+            print("scheduler Error: valores de horario fuera de rango")
+            return False
+        
+        set_schedule(h_ini_int, m_ini_int, h_fin_int, m_fin_int)
+        print(f"scheduler Nuevo horario guardado: {h_ini_int:02d}:{m_ini_int:02d} - {h_fin_int:02d}:{m_fin_int:02d}")
         return True
+    except (ValueError, TypeError) as e:
+        print(f"scheduler Error: valores de horario inválidos: {e}")
+        return False
     except Exception as e:
         print(f"scheduler Error guardando horario: {e}")
         return False
 
 def escribir_estado_luz(estado):
-    """Actualiza el estado de la luz en data/light.json."""
-    # Primero leemos para no borrar la luminosidad del sensor
-    data = {}
-    if os.path.exists(LIGHT_FILE):
-        try:
-            with open(LIGHT_FILE, "r") as f:
-                data = json.load(f)
-        except: pass
-    
-    data["estado"] = estado
-    
+    """Actualiza el estado de la luz en la base de datos."""
     try:
-        with open(LIGHT_FILE, "w") as f:
-            json.dump(data, f, indent=4)
+        # El estado de control se guarda en light_state, no en light_sensor
+        # light_sensor solo guarda datos del sensor (luminosidad)
+        from database import set_light_state
+        intensidad = 100 if estado.lower() == "on" else 0
+        set_light_state(estado.upper(), intensidad, "HORARIO")
         # print(f"scheduler Luz actualizada -> {estado.upper()}") # Comentado para no saturar consola
     except Exception as e:
-        print(f"scheduler Error escribiendo light.json: {e}")
+        print(f"scheduler Error escribiendo estado luz: {e}")
 
 def dentro_del_horario(hora_actual, minuto_actual, horario):
     inicio = horario["hora_inicio"] * 60 + horario["minuto_inicio"]

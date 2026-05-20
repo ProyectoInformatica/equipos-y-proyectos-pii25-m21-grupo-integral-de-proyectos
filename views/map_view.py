@@ -1,161 +1,491 @@
 import flet as ft
+import os
+import sys
 import threading
 import time
+from datetime import datetime
+
+# Importar controladores
 from controllers.data_controller import DataController
 
+
 class MapView(ft.Container):
-    def __init__(self, page):
-        super().__init__(expand=True, padding=20)
+    def __init__(self, page=None): 
+        super().__init__()
         self.page = page
+        self.expand = True 
+        self.padding = 20
+        self.running = True
+        
+        # Estado actual para estadísticas
+        self.current_state = {
+            "lights": False,
+            "barriers": False,
+            "water_flow": 0.0,
+            "water_alert": False,
+            "last_update": datetime.now().strftime("%H:%M:%S")
+        }
+        
+        # Configuración de tipos de marcadores
+        self.marker_configs = {
+            "light": {
+                "icon": "assets/icon_iluminacion.png",
+                "size": 40,
+                "count": 2,
+                "colors": {"on": ("yellow100", "orange"), "off": ("grey200", "grey600")},
+                "dialog_title": "Gestionar Iluminación",
+                "dialog_handler": self._light_dialog_handler,
+                "name": "Iluminación"
+            },
+            "barrier": {
+                "icon": "assets/icon_acceso.png",
+                "size": 42,
+                "count": 2,
+                "colors": {"on": ("green100", "green600"), "off": ("red100", "red600")},
+                "dialog_title": "Control de Accesos",
+                "dialog_handler": self._barrier_dialog_handler,
+                "name": "Accesos"
+            },
+            "water": {
+                "icon": "assets/icon_recursos.png",
+                "size": 40,
+                "count": 2,
+                "colors": {"on": ("blue100", "blue600"), "off": ("red100", "red600")},
+                "dialog_title": "Gestión de Suministro de Agua",
+                "dialog_handler": self._water_dialog_handler,
+                "name": "Agua"
+            }
+        }
 
-        # ICONOS DEL MAPA (Sensores) 
-        self.icon_barrera = self._crear_marcador(ft.Icons.GARAGE, "Barrera Principal", 50, 250)
-        self.icon_farola = self._crear_marcador(ft.Icons.LIGHTBULB, "Farolas Calle", 200, 100)
-        self.icon_humo = self._crear_marcador(ft.Icons.FIRE_EXTINGUISHER, "Sensor Incendio", 350, 150)
-        self.icon_agua = self._crear_marcador(ft.Icons.WATER_DROP, "Suministro Agua", 300, 300)
-        self.icon_viento = self._crear_marcador(ft.Icons.AIR, "Anemómetro", 500, 50)
+        # Crear marcadores dinámicamente
+        self.markers = {}
+        for marker_type, config in self.marker_configs.items():
+            self.markers[marker_type] = [
+                self._create_marker_container(config["icon"], config["size"], marker_type)
+                for _ in range(config["count"])
+            ]
 
-        # Contenedor del Mapa
-        self.mapa_container = ft.Stack(
-            [
-                ft.Image(
-                    src="mapa_iluminacion_off.jpg",
-                    width=600,
-                    height=400,
-                    fit=ft.ImageFit.FILL,
-                    border_radius=10,
-                    opacity=0.8
-                ),
-                self.icon_barrera,
-                self.icon_farola,
-                self.icon_humo,
-                self.icon_agua,
-                self.icon_viento
-            ],
-            width=600,
-            height=400,
+        self.content = self._build_ui()
+
+    def _create_marker_container(self, icon_src, size, marker_type):
+        container = ft.Container(
+            content=ft.Image(src=icon_src, width=size, height=size, fit=ft.ImageFit.CONTAIN),
+            bgcolor="white",
+            border_radius=50,
+            padding=8,
+            border=ft.border.all(2, "grey400"),
+            data=marker_type
         )
+        return container
 
-        self.info_panel = ft.Text("Selecciona un sensor en el mapa...", italic=True)
+    def did_mount(self):
+        self.running = True
+        self.th = threading.Thread(target=self.update_map_state, daemon=True)
+        self.th.start()
 
-        self.content = ft.Column([
-            ft.Container(
-                content=ft.Text("Mapa General de la Zona", size=24, weight="bold"),
-                bgcolor="white",
-                padding=20,
-                border_radius=10,
-                width=float("inf"), # Ocupa todo el ancho
-                shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
-            ),
-            ft.Container(height=10), # Espacio
+    def will_unmount(self):
+        self.running = False
+
+    def matar_hilos(self):
+        self.running = False
+
+    def update_map_state(self):
+        while self.running:
+            # Actualizar luces
+            light_state = DataController.obtener_estado_luz()
+            is_on = light_state.upper() == "ON"
+            self.current_state["lights"] = is_on
+            colors = self.marker_configs["light"]["colors"]["on" if is_on else "off"]
+            for marker in self.markers["light"]:
+                self._update_marker_style(marker, colors[0], colors[1])
+
+            # Actualizar barreras (tomar la primera barrera como referencia, o combinar ambas)
+            access_data = DataController.obtener_estado_barreras()
+            # Si hay múltiples barreras, considerar abierta si alguna lo está
+            is_open = False
+            if isinstance(access_data, dict):
+                for barrera, estado in access_data.items():
+                    if isinstance(estado, dict) and estado.get("barrera_abierta", False):
+                        is_open = True
+                        break
+            self.current_state["barriers"] = is_open
+            colors = self.marker_configs["barrier"]["colors"]["on" if is_open else "off"]
+            for marker in self.markers["barrier"]:
+                self._update_marker_style(marker, colors[0], colors[1])
+
+            # Actualizar agua
+            # Obtener flujo de agua desde recursos
+            recursos_agua = DataController.obtener_datos_agua()
+            flujo = recursos_agua[0]["value"] if recursos_agua else 0.0
+            hay_fuga = flujo > 5.0
+            self.current_state["water_flow"] = flujo
+            self.current_state["water_alert"] = hay_fuga
+            colors = self.marker_configs["water"]["colors"]["off" if hay_fuga else "on"]
+            for marker in self.markers["water"]:
+                self._update_marker_style(marker, colors[0], colors[1])
             
-            ft.Row([
-                # Columna Izquierda: Mapa
-                ft.Container(
-                    content=self.mapa_container,
-                    border=ft.border.all(2, "#cccccc"),
-                    border_radius=10,
-                    padding=5,
-                    bgcolor="white"
+            self.current_state["last_update"] = datetime.now().strftime("%H:%M:%S")
+            self._update_stats_panel()
+            
+            try:
+                self.update()
+            except:
+                break
+            time.sleep(1)
+
+    def _update_marker_style(self, control, bgcolor, border_color):
+        control.bgcolor = bgcolor
+        control.border = ft.border.all(3, border_color)
+
+    def _update_stats_panel(self):
+        if hasattr(self, 'stats_panel'):
+            # Actualizar texto de estadísticas
+            light_status = "ACTIVA" if self.current_state["lights"] else "INACTIVA"
+            self.stats_light_text.value = light_status
+            self.stats_light_text.color = "green" if self.current_state["lights"] else "black"
+            
+            barrier_status = "ABIERTA" if self.current_state["barriers"] else "CERRADA"
+            self.stats_barrier_text.value = barrier_status
+            self.stats_barrier_text.color = "green" if self.current_state["barriers"] else "red"
+            
+            water_status = "ALERTA" if self.current_state["water_alert"] else "NORMAL"
+            self.stats_water_text.value = f"{water_status} ({self.current_state['water_flow']:.1f} L/min)"
+            self.stats_water_text.color = "red" if self.current_state["water_alert"] else "green"
+            
+            self.stats_update_text.value = f"Última actualización: {self.current_state['last_update']}"
+
+    def _show_dialog(self, title, content, actions=None):
+        dlg = ft.AlertDialog(
+            title=ft.Text(title, size=20, weight="bold"),
+            content=content,
+            actions=actions or [],
+            modal=True,
+            shape=ft.RoundedRectangleBorder(radius=10)
+        )
+        self.page.dialog = dlg
+        dlg.open = True
+        self.page.update()
+
+    def _close_dialog(self):
+        self.page.dialog.open = False
+        self.page.update()
+
+    def _show_snackbar(self, message, bgcolor="blue"):
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Row([
+                ft.Icon(name="check_circle", color="white"),
+                ft.Text(message, color="white", weight="bold")
+            ], tight=True),
+            bgcolor=bgcolor,
+            duration=3000
+        )
+        self.page.snack_bar.open = True
+        self.page.update()
+
+    def _light_dialog_handler(self):
+        def set_light(state):
+            DataController.guardar_estado_luz_manual("on" if state else "off")
+            self._close_dialog()
+            self._show_snackbar(f"Luces {'ENCENDIDAS' if state else 'APAGADAS'} manualmente", 
+                              "orange" if state else "grey")
+
+        def set_auto(e):
+            DataController.guardar_estado_luz_manual("off")  # Desactivar modo manual
+            self._close_dialog()
+            self._show_snackbar("Luces en modo AUTOMÁTICO", "blue")
+
+        content = ft.Container(
+            content=ft.Column([
+                ft.Text("Seleccione una acción manual:", size=14),
+                ft.Row([
+                    ft.ElevatedButton(
+                        "Encender", 
+                        icon="light_mode", 
+                        on_click=lambda _: set_light(True), 
+                        bgcolor="orange",
+                        color="white"
+                    ),
+                    ft.ElevatedButton(
+                        "Apagar", 
+                        icon="nightlight_round", 
+                        on_click=lambda _: set_light(False), 
+                        bgcolor="grey600",
+                        color="white"
+                    ),
+                ], alignment="center", spacing=10),
+                ft.Divider(height=20),
+                ft.OutlinedButton(
+                    "Restaurar Automático", 
+                    width=250, 
+                    on_click=set_auto
                 ),
-                # Columna Derecha: Leyenda / Detalles
+            ], tight=True, horizontal_alignment="center", spacing=10),
+            width=350,
+            padding=20
+        )
+        
+        self._show_dialog("Gestionar Iluminación", content, 
+                         [ft.TextButton("Cancelar", on_click=lambda _: self._close_dialog())])
+
+    def _barrier_dialog_handler(self):
+        def set_barrier(state):
+            # Por defecto modificar la barrera "norte", puedes ajustar según necesites
+            DataController.guardar_manual_barrera("norte", True, state)
+            self._close_dialog()
+            self._show_snackbar(f"Barrera {'ABIERTA' if state else 'CERRADA'} manualmente",
+                              "green" if state else "red")
+
+        def set_auto(e):
+            DataController.guardar_manual_barrera("norte", False, False)
+            self._close_dialog()
+            self._show_snackbar("Barrera en modo AUTOMÁTICO", "blue")
+
+        content = ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.ElevatedButton(
+                        "Abrir", 
+                        icon="lock_open", 
+                        on_click=lambda _: set_barrier(True), 
+                        bgcolor="green",
+                        color="white"
+                    ),
+                    ft.ElevatedButton(
+                        "Cerrar", 
+                        icon="lock_outline", 
+                        on_click=lambda _: set_barrier(False), 
+                        bgcolor="red",
+                        color="white"
+                    ),
+                ], alignment="center", spacing=10),
+                ft.Divider(height=20),
+                ft.OutlinedButton(
+                    "Modo Automático", 
+                    width=250, 
+                    on_click=set_auto
+                ),
+            ], tight=True, horizontal_alignment="center", spacing=10),
+            width=350,
+            padding=20
+        )
+        
+        self._show_dialog("Control de Accesos", content, 
+                         [ft.TextButton("Cancelar", on_click=lambda _: self._close_dialog())])
+
+    def _water_dialog_handler(self):
+        flujo = get_latest_resource_value("water")
+        hay_fuga = flujo > 5.0
+        
+        def set_valve(state):
+            # Nota: No hay tabla específica para water_manual_state en la BD
+            # Si necesitas esta funcionalidad, deberías añadirla a database.py
+            # Por ahora solo mostramos el mensaje
+            self._close_dialog()
+            accion = "SUMINISTRO RESTAURADO" if state else "CORTE DE SUMINISTRO"
+            self._show_snackbar(f"{accion} realizado manualmente", "green" if state else "red")
+
+        content = ft.Container(
+            content=ft.Column([
                 ft.Container(
-                    content=ft.Column([
-                        ft.Text("Estado en Tiempo Real", weight="bold", size=18),
-                        ft.Divider(),
-                        self.info_panel,
-                        ft.Divider(),
-                        ft.Row([ft.Icon(ft.Icons.CIRCLE, color="green", size=15), ft.Text("Normal")]),
-                        ft.Row([ft.Icon(ft.Icons.CIRCLE, color="orange", size=15), ft.Text("Activo/Aviso")]),
-                        ft.Row([ft.Icon(ft.Icons.CIRCLE, color="red", size=15), ft.Text("Alerta/Cerrado")]),
-                    ]),
-                    padding=20,
-                    bgcolor="white",
+                    bgcolor="red50" if hay_fuga else "blue50",
+                    padding=15,
                     border_radius=10,
-                    expand=True, # Para que ocupe el resto del espacio a la derecha
-                    shadow=ft.BoxShadow(blur_radius=5, color="#1A000000")
-                )
-            ], vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
-        ], scroll=ft.ScrollMode.AUTO)
+                    content=ft.Row([
+                        ft.Icon(name="water_drop", color="red" if hay_fuga else "blue", size=30),
+                        ft.Text(f"Flujo Actual: {flujo:.2f} L/min", weight="bold", size=16),
+                    ], spacing=15, alignment="center")
+                ),
+                ft.Text("Control de Válvula Principal:", size=12),
+                ft.Row([
+                    ft.ElevatedButton(
+                        "Cerrar Suministro", 
+                        icon="block", 
+                        on_click=lambda _: set_valve(False), 
+                        bgcolor="red",
+                        color="white"
+                    ),
+                    ft.OutlinedButton(
+                        "Abrir Válvula", 
+                        icon="check_circle",
+                        on_click=lambda _: set_valve(True)
+                    ),
+                ], alignment="center", spacing=10),
+            ], tight=True, horizontal_alignment="center", spacing=10),
+            width=400,
+            padding=20
+        )
+        
+        self._show_dialog("Gestión de Suministro de Agua", content, 
+                         [ft.TextButton("Cancelar", on_click=lambda _: self._close_dialog())])
 
-        threading.Thread(target=self._update_loop, daemon=True).start()
+    def toggle_lights_dialog(self, e):
+        self._light_dialog_handler()
 
-    def _crear_marcador(self, icon_name, tooltip_text, left, top):
-        icon = ft.Icon(icon_name, color="grey", size=30)
+    def toggle_barrier_dialog(self, e):
+        self._barrier_dialog_handler()
+
+    def toggle_water_dialog(self, e):
+        self._water_dialog_handler()
+
+    def _create_stats_panel(self):
+        self.stats_light_text = ft.Text("INACTIVA", size=14, weight="bold", color="black")
+        self.stats_barrier_text = ft.Text("CERRADA", size=14, weight="bold", color="red")
+        self.stats_water_text = ft.Text("NORMAL (0.0 L/min)", size=14, weight="bold", color="green")
+        self.stats_update_text = ft.Text("Última actualización: --:--:--", size=11, color="grey", italic=True)
+        
         return ft.Container(
-            content=ft.Container(
-                content=icon,
-                bgcolor="white",
-                border_radius=50,
-                padding=5,
-                shadow=ft.BoxShadow(blur_radius=5, color="#1A000000"),
-                tooltip=tooltip_text, 
-            ),
-            left=left,
-            top=top,
+            bgcolor="#ffffff",
+            padding=20,
+            border_radius=10,
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(name="dashboard", size=20, color="blueGrey700"),
+                    ft.Text("Estado del Sistema", size=16, weight="bold", color="blueGrey800")
+                ], spacing=10),
+                ft.Divider(height=15, thickness=1),
+                ft.Row([
+                    ft.Icon(name="light_mode", size=20, color="orange"),
+                    ft.Column([
+                        ft.Text("Iluminación", size=12, color="grey600"),
+                        self.stats_light_text
+                    ], spacing=2, tight=True)
+                ], spacing=10),
+                ft.Row([
+                    ft.Icon(name="security", size=20, color="blue"),
+                    ft.Column([
+                        ft.Text("Accesos", size=12, color="grey600"),
+                        self.stats_barrier_text
+                    ], spacing=2, tight=True)
+                ], spacing=10),
+                ft.Row([
+                    ft.Icon(name="water_drop", size=20, color="blue"),
+                    ft.Column([
+                        ft.Text("Suministro de Agua", size=12, color="grey600"),
+                        self.stats_water_text
+                    ], spacing=2, tight=True)
+                ], spacing=10),
+                ft.Divider(height=10),
+                self.stats_update_text
+            ], spacing=8, tight=True),
+            expand=1
         )
 
-    def _actualizar_estado_icono(self, container_posicion, color, tooltip_text):
-        container_circulo = container_posicion.content
-        icon_control = container_circulo.content
-        icon_control.color = color
-        container_circulo.tooltip = tooltip_text
+    def _build_ui(self):
+        # Header similar a iluminacion_view
+        header = ft.Container(
+            content=ft.Text("Mapa Interactivo de Zona", size=24, weight="bold"),
+            bgcolor="#ffffff",
+            padding=20,
+            border_radius=10,
+            expand=True
+        )
 
-    def _update_ui(self):
-        try:
-            # 1. BARRERA
-            acc = DataController.obtener_estado_barrera()
-            if acc["barrera_abierta"]:
-                self._actualizar_estado_icono(self.icon_barrera, "green", "Barrera: ABIERTA")
-            else:
-                self._actualizar_estado_icono(self.icon_barrera, "red", "Barrera: CERRADA")
+        # Mapa base - estilo simple
+        map_image = ft.Image(
+            src="assets/mapa_iluminacion_off.jpg", 
+            fit=ft.ImageFit.COVER,
+            expand=True
+        )
 
-            # 2. ILUMINACIÓN
-            luz = DataController.obtener_estado_luz()
-            if luz == "on":
-                self._actualizar_estado_icono(self.icon_farola, "orange", "Farolas: ENCENDIDAS")
-            else:
-                self._actualizar_estado_icono(self.icon_farola, "grey", "Farolas: APAGADAS")
+        # Crear marcadores con configuración
+        marker_configs = [
+            ("Iluminación", self.markers["light"][0], self.toggle_lights_dialog, {"top": 30, "left": 100}),
+            # ("Farola 2", self.markers["light"][1], self.toggle_lights_dialog, {"top": 100, "right": 100}),
+            ("Acceso Sur", self.markers["barrier"][0], self.toggle_barrier_dialog, {"bottom": 10, "left": 280, "right": 0, "alignment": ft.alignment.center}),
+            ("Acceso Norte", self.markers["barrier"][1], self.toggle_barrier_dialog, {"top": 10, "left": 480, "right": 0, "alignment": ft.alignment.center}),
+            ("Agua A", self.markers["water"][0], self.toggle_water_dialog, {"bottom": 50, "left": 80}),
+            ("Riego", self.markers["water"][1], self.toggle_water_dialog, {"bottom": 150, "right": 20}),
+        ]
 
-            # 3. HUMO
-            emerg = DataController.obtener_datos_emergencia()
-            humo_val = 0
-            if emerg["humo"] and len(emerg["humo"]) > 0:
-                humo_val = emerg["humo"][-1]["value"]
-            
-            if humo_val > 25:
-                self._actualizar_estado_icono(self.icon_humo, "red", f"¡HUMO DETECTADO! ({humo_val})")
-            else:
-                self._actualizar_estado_icono(self.icon_humo, "green", f"Humo: Normal ({humo_val})")
+        # Crear marcadores
+        markers = []
+        for label, marker, handler, position in marker_configs:
+            marker_widget = self._create_marker_widget(label, marker, handler)
+            markers.append(ft.Container(
+                content=marker_widget,
+                **position
+            ))
 
-            # 4. AGUA
-            agua = DataController.obtener_datos_agua()
-            flujo = 0
-            if agua and len(agua) > 0:
-                flujo = agua[-1]["value"]
-            
-            if flujo > 45:
-                self._actualizar_estado_icono(self.icon_agua, "red", f"¡FUGA! ({flujo} L/min)")
-            else:
-                self._actualizar_estado_icono(self.icon_agua, "blue", f"Agua: {flujo} L/min")
+        # Panel de estadísticas
+        self.stats_panel = self._create_stats_panel()
 
-            # 5. VIENTO
-            viento_val = 0
-            if emerg["viento"] and len(emerg["viento"]) > 0:
-                viento_val = emerg["viento"][-1]["value"]
+        # Leyenda - estilo simple
+        legend_card = ft.Container(
+            bgcolor="#ffffff",
+            padding=20,
+            border_radius=10,
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(name="info", size=20, color="blueGrey700"),
+                    ft.Text("Leyenda", weight="bold", size=16, color="blueGrey800")
+                ], spacing=8),
+                ft.Divider(height=12, thickness=1),
+                self._legend_item("yellow", "Luz ON", "orange"),
+                self._legend_item("grey", "Luz OFF", "black"),
+                self._legend_item("green", "Abierto", None),
+                self._legend_item("red", "Cerrado", None),
+                self._legend_item("blue", "Agua OK", "blue"),
+                self._legend_item("red", "Alerta", "red"),
+                ft.Divider(height=10),
+                ft.Container(height=15)
+            ], spacing=8, tight=True),
+            expand=1
+        )
 
-            if viento_val > 50:
-                self._actualizar_estado_icono(self.icon_viento, "red", f"¡VIENTO FUERTE! ({viento_val} km/h)")
-            else:
-                self._actualizar_estado_icono(self.icon_viento, "green", f"Viento: {viento_val} km/h")
-            
-            self.page.update()
+        # Contenedor del mapa con marcadores
+        panel_mapa = ft.Container(
+            content=ft.Stack([
+                map_image,
+                *markers
+            ]),
+            bgcolor="#ffffff",
+            border_radius=10,
+            expand=True
+        )
 
-        except Exception as e:
-            print(f"Error Mapa: {e}")
+        # Layout principal - similar a iluminacion_view
+        main_content = ft.Container(
+            content=ft.Column([
+                ft.Row([header]),
+                ft.Row([panel_mapa]),
+                ft.Row([
+                    self.stats_panel,
+                    legend_card
+                ], vertical_alignment=ft.CrossAxisAlignment.START)
+            ], scroll=ft.ScrollMode.ADAPTIVE, expand=True, spacing=10),
+            expand=True
+        )
 
-    def _update_loop(self):
-        while True:
-            if self.page:
-                self._update_ui()
-            time.sleep(2)
+        return main_content
+
+    def _create_marker_widget(self, label, status_control, on_click_handler):
+        marker_container = ft.Container(
+            content=ft.Column([
+                status_control,
+                ft.Container(
+                    content=ft.Text(label, size=10, weight="bold", color="white"), 
+                    bgcolor="black87",
+                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                    border_radius=5
+                )
+            ], horizontal_alignment="center", spacing=4, tight=True)
+        )
+
+        return ft.GestureDetector(
+            mouse_cursor=ft.MouseCursor.CLICK,
+            on_tap=on_click_handler,
+            content=marker_container
+        )
+
+    def _legend_item(self, color, text, border_color):
+        border = ft.border.all(2, border_color) if border_color else ft.border.all(1, "grey400")
+        return ft.Row([
+            ft.Container(
+                width=14,
+                height=14,
+                bgcolor=color,
+                border=border,
+                border_radius=3
+            ),
+            ft.Text(text, size=12, color="black")
+        ], spacing=10, tight=True)
