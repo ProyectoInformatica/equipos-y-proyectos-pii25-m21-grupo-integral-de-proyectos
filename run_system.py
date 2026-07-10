@@ -17,7 +17,6 @@ sensores = [
     "distance_sensor.py",
     "flow_sensor.py",
     "power_sensor.py",
-    "pulse_sensor.py",
     # --- Controladores ---
     "controllers/usage_analyzer.py",  # Análisis de consumo
     "controllers/alarm_control.py",  # Gestión de alarmas

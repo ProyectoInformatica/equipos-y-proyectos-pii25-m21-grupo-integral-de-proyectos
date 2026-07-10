@@ -255,23 +255,6 @@ class DataController:
         """Devuelve historial de consumo eléctrico."""
         return _leer_json("resource_power.json")
 
-    # PULSÓMETRO
-    @staticmethod
-    def obtener_datos_pulsometro():
-        """Devuelve el historial de lecturas del pulsómetro.
-
-        Prioriza la base de datos (tabla Pulsometro); si no está disponible,
-        recurre al JSON de historial que genera el sensor."""
-        try:
-            import database
-            datos = database.get_pulsometro_data(limit=24)
-            if datos:
-                return datos
-        except Exception:
-            pass
-        historial = _leer_json("pulsometro.json")
-        return historial if isinstance(historial, list) else []
-
     # CONFIGURACIÓN ALERTAS
     @staticmethod
     def obtener_config_alertas():
