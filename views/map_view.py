@@ -1,39 +1,13 @@
 import flet as ft
-import json
 import os
+import sys
 import threading
 import time
 from datetime import datetime
 
-# Rutas de Archivos 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+# Importar controladores
+from controllers.data_controller import DataController
 
-# Archivos de datos
-LIGHT_STATE = os.path.join(DATA_DIR, "light_state.json")
-LIGHT_MANUAL = os.path.join(DATA_DIR, "light_manual_state.json")
-ACCESS_STATE = os.path.join(DATA_DIR, "access_state.json")
-ACCESS_MANUAL = os.path.join(DATA_DIR, "access_manual_state.json")
-WATER_SENSOR = os.path.join(DATA_DIR, "resource_water.json")
-WATER_MANUAL = os.path.join(DATA_DIR, "water_manual_state.json")
-
-def get_json_data(filepath, default):
-    if os.path.exists(filepath):
-        try:
-            with open(filepath, "r") as f: return json.load(f)
-        except: return default
-    return default
-
-def get_latest_sensor_value(filepath, key="value"):
-    data = get_json_data(filepath, [])
-    if isinstance(data, list) and len(data) > 0:
-        return data[-1].get(key, 0)
-    return 0
-
-def save_json_data(filepath, data):
-    try:
-        with open(filepath, "w") as f: json.dump(data, f, indent=4)
-    except Exception as e: print(f"Error guardando {filepath}: {e}")
 
 class MapView(ft.Container):
     def __init__(self, page=None): 
@@ -58,10 +32,6 @@ class MapView(ft.Container):
                 "icon": "assets/icon_iluminacion.png",
                 "size": 40,
                 "count": 2,
-                "state_file": LIGHT_STATE,
-                "manual_file": LIGHT_MANUAL,
-                "state_key": "estado_luces",
-                "manual_key": "encender",
                 "colors": {"on": ("yellow100", "orange"), "off": ("grey200", "grey600")},
                 "dialog_title": "Gestionar Iluminación",
                 "dialog_handler": self._light_dialog_handler,
@@ -71,10 +41,6 @@ class MapView(ft.Container):
                 "icon": "assets/icon_acceso.png",
                 "size": 42,
                 "count": 2,
-                "state_file": ACCESS_STATE,
-                "manual_file": ACCESS_MANUAL,
-                "state_key": "barrera_abierta",
-                "manual_key": "abrir",
                 "colors": {"on": ("green100", "green600"), "off": ("red100", "red600")},
                 "dialog_title": "Control de Accesos",
                 "dialog_handler": self._barrier_dialog_handler,
@@ -84,10 +50,6 @@ class MapView(ft.Container):
                 "icon": "assets/icon_recursos.png",
                 "size": 40,
                 "count": 2,
-                "state_file": WATER_SENSOR,
-                "manual_file": WATER_MANUAL,
-                "state_key": None,
-                "manual_key": "valvula_abierta",
                 "colors": {"on": ("blue100", "blue600"), "off": ("red100", "red600")},
                 "dialog_title": "Gestión de Suministro de Agua",
                 "dialog_handler": self._water_dialog_handler,
@@ -124,26 +86,37 @@ class MapView(ft.Container):
     def will_unmount(self):
         self.running = False
 
+    def matar_hilos(self):
+        self.running = False
+
     def update_map_state(self):
         while self.running:
             # Actualizar luces
-            light_data = get_json_data(LIGHT_STATE, {})
-            is_on = light_data.get("estado_luces", False)
+            light_state = DataController.obtener_estado_luz()
+            is_on = light_state.upper() == "ON"
             self.current_state["lights"] = is_on
             colors = self.marker_configs["light"]["colors"]["on" if is_on else "off"]
             for marker in self.markers["light"]:
                 self._update_marker_style(marker, colors[0], colors[1])
 
-            # Actualizar barreras
-            access_data = get_json_data(ACCESS_STATE, {})
-            is_open = access_data.get("barrera_abierta", False)
+            # Actualizar barreras (tomar la primera barrera como referencia, o combinar ambas)
+            access_data = DataController.obtener_estado_barreras()
+            # Si hay múltiples barreras, considerar abierta si alguna lo está
+            is_open = False
+            if isinstance(access_data, dict):
+                for barrera, estado in access_data.items():
+                    if isinstance(estado, dict) and estado.get("barrera_abierta", False):
+                        is_open = True
+                        break
             self.current_state["barriers"] = is_open
             colors = self.marker_configs["barrier"]["colors"]["on" if is_open else "off"]
             for marker in self.markers["barrier"]:
                 self._update_marker_style(marker, colors[0], colors[1])
 
             # Actualizar agua
-            flujo = get_latest_sensor_value(WATER_SENSOR, "value")
+            # Obtener flujo de agua desde recursos
+            recursos_agua = DataController.obtener_datos_agua()
+            flujo = recursos_agua[0]["value"] if recursos_agua else 0.0
             hay_fuga = flujo > 5.0
             self.current_state["water_flow"] = flujo
             self.current_state["water_alert"] = hay_fuga
@@ -211,13 +184,13 @@ class MapView(ft.Container):
 
     def _light_dialog_handler(self):
         def set_light(state):
-            save_json_data(LIGHT_MANUAL, {"modo_manual": True, "encender": state})
+            DataController.guardar_estado_luz_manual("on" if state else "off")
             self._close_dialog()
             self._show_snackbar(f"Luces {'ENCENDIDAS' if state else 'APAGADAS'} manualmente", 
                               "orange" if state else "grey")
 
         def set_auto(e):
-            save_json_data(LIGHT_MANUAL, {"modo_manual": False, "encender": False})
+            DataController.guardar_estado_luz_manual("off")  # Desactivar modo manual
             self._close_dialog()
             self._show_snackbar("Luces en modo AUTOMÁTICO", "blue")
 
@@ -256,13 +229,14 @@ class MapView(ft.Container):
 
     def _barrier_dialog_handler(self):
         def set_barrier(state):
-            save_json_data(ACCESS_MANUAL, {"modo_manual": True, "abrir": state})
+            # Por defecto modificar la barrera "norte", puedes ajustar según necesites
+            DataController.guardar_manual_barrera("norte", True, state)
             self._close_dialog()
             self._show_snackbar(f"Barrera {'ABIERTA' if state else 'CERRADA'} manualmente",
                               "green" if state else "red")
 
         def set_auto(e):
-            save_json_data(ACCESS_MANUAL, {"modo_manual": False, "abrir": False})
+            DataController.guardar_manual_barrera("norte", False, False)
             self._close_dialog()
             self._show_snackbar("Barrera en modo AUTOMÁTICO", "blue")
 
@@ -299,11 +273,13 @@ class MapView(ft.Container):
                          [ft.TextButton("Cancelar", on_click=lambda _: self._close_dialog())])
 
     def _water_dialog_handler(self):
-        flujo = get_latest_sensor_value(WATER_SENSOR, "value")
+        flujo = get_latest_resource_value("water")
         hay_fuga = flujo > 5.0
         
         def set_valve(state):
-            save_json_data(WATER_MANUAL, {"modo_manual": True, "valvula_abierta": state})
+            # Nota: No hay tabla específica para water_manual_state en la BD
+            # Si necesitas esta funcionalidad, deberías añadirla a database.py
+            # Por ahora solo mostramos el mensaje
             self._close_dialog()
             accion = "SUMINISTRO RESTAURADO" if state else "CORTE DE SUMINISTRO"
             self._show_snackbar(f"{accion} realizado manualmente", "green" if state else "red")

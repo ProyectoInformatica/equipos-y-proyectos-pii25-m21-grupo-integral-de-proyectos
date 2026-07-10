@@ -1,73 +1,30 @@
-import json
 import time
 import os
-from datetime import datetime
+import sys
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-CONFIG_FILE = os.path.join(DATA_DIR, "alert_config.json")
-NOTIFICATIONS_FILE = os.path.join(DATA_DIR, "notifications.json")
-
-def load_json(filepath):
-    if not os.path.exists(filepath): return None
-    try:
-        with open(filepath, "r") as f: return json.load(f)
-    except: return None
-
-def load_last_value(filename):
-    data = load_json(os.path.join(DATA_DIR, filename))
-    if data and isinstance(data, list) and len(data) > 0:
-        return data[-1].get("value", 0)
-    return 0
+sys.path.insert(0, BASE_DIR)
+from database import get_latest_sensor_value, get_latest_resource_value, get_alert_config, add_notification
 
 def registrar_alerta(titulo, mensaje, nivel="crítico"):
-    """Guarda la alerta en notifications.json"""
-    nueva_alerta = {
-        "hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "titulo": titulo,
-        "mensaje": mensaje,
-        "nivel": nivel  # 'crítico', 'advertencia', 'info'
-    }
-    
-    # Leer historial existente
-    historial = []
-    if os.path.exists(NOTIFICATIONS_FILE):
-        try:
-            with open(NOTIFICATIONS_FILE, "r") as f: historial = json.load(f)
-        except: pass
-    
-    # Evitar duplicados recientes (alertas cada 5 segundos)
-    if historial:
-        ultimo = historial[0]
-        # Si es el mismo título y ha pasado menos de 1 minuto, no duplicamos
-        fmt = "%Y-%m-%d %H:%M:%S"
-        t_ultimo = datetime.strptime(ultimo["hora"], fmt)
-        t_ahora = datetime.strptime(nueva_alerta["hora"], fmt)
-        diferencia = (t_ahora - t_ultimo).total_seconds()
-        
-        if ultimo["titulo"] == titulo and diferencia < 60:
-            return # Ignorar alerta repetida
-
-    # Insertar al principio y guardar (máx 50 registros)
-    historial.insert(0, nueva_alerta)
-    historial = historial[:50]
-    
+    """Guarda la alerta en la base de datos"""
     try:
-        with open(NOTIFICATIONS_FILE, "w") as f: json.dump(historial, f, indent=4)
+        add_notification(titulo, mensaje, nivel)
         print(f"ALERTA GUARDADA {titulo}: {mensaje}")
     except Exception as e:
         print(f"Error guardando alerta: {e}")
 
 def check_alarms():
     # 1. Cargar Configuración
-    config = load_json(CONFIG_FILE) or {}
+    config = get_alert_config()
     
     # 2. Leer sensores
-    val_humo = load_last_value("envhumo.json")
-    val_viento = load_last_value("envviento.json")
-    val_temp = load_last_value("envtemperatura.json")
-    val_iaq = load_last_value("envcalidadaire.json")
-    val_agua = load_last_value("resource_water.json") 
+    val_humo = get_latest_sensor_value("humo")
+    val_viento = get_latest_sensor_value("viento")
+    val_temp = get_latest_sensor_value("temp")
+    val_iaq = get_latest_sensor_value("iaq")
+    val_agua = get_latest_resource_value("water") 
 
     # REGLAS DE ALERTA
 

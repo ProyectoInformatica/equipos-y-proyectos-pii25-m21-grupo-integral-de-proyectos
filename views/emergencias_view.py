@@ -14,33 +14,42 @@ matplotlib.use('Agg')
 def generar_grafica(x, y, titulo, ylabel):
     if not x or not y: return ""
     fig, ax = plt.subplots(figsize=(6, 3))
-    colorGraf = "#458ce9" if ylabel == "km/h" else "darkblue"
+    try:
+        colorGraf = "#458ce9" if ylabel == "km/h" else "darkblue"
 
-    ax.plot(x, y, marker="o", color=colorGraf)
-    ax.set_title(titulo)
-    ax.set_xlabel("Hora")
-    ax.set_ylabel(ylabel)
-    ax.grid(True)
-    plt.xticks(rotation=45)
-    
-    if len(x) > 10:
-        ax.set_xticks(range(0, len(x), 4))
-        ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+        if len(x) != len(y):
+            min_len = min(len(x), len(y))
+            x = x[:min_len]
+            y = y[:min_len]
 
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    plt.close(fig)
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode()
+        ax.plot(x, y, marker="o", color=colorGraf)
+        ax.set_title(titulo)
+        ax.set_xlabel("Hora")
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+        plt.xticks(rotation=45)
+        
+        if len(x) > 10:
+            ax.set_xticks(range(0, len(x), 4))
+            ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode()
+    finally:
+        plt.close(fig)
 
 
 class EmergenciasView(ft.Container):
     def __init__(self, page, usuarioApp):
         super().__init__(expand=True)
         self.page = page
+        self.activo = True
 
-        self.img_viento = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
-        self.img_humo = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        empty_png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        self.img_viento = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        self.img_humo = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
 
         config_actual = DataController.obtener_config_alertas()
 
@@ -93,6 +102,7 @@ class EmergenciasView(ft.Container):
         def auto_refresh_loop():
             while True:
                 time.sleep(10)
+                if not getattr(self, 'activo', True): break
                 try: cargar_datos()
                 except: pass
         
@@ -150,3 +160,6 @@ class EmergenciasView(ft.Container):
                     ], scroll=ft.ScrollMode.ADAPTIVE
                 )
             )
+
+    def matar_hilos(self):
+        self.activo = False

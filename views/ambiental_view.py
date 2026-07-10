@@ -17,39 +17,50 @@ def generar_grafica(x, y, titulo, ylabel):
     if not x or not y: return ""
     
     fig, ax = plt.subplots(figsize=(6, 3))
-    colorGraf = "cyan"
-    if ylabel == "°C": colorGraf = "#e97547"
-    elif ylabel == "%": colorGraf = "#458ce9"
-    else: colorGraf = "darkblue"
+    try:
+        colorGraf = "cyan"
+        if ylabel == "°C": colorGraf = "#e97547"
+        elif ylabel == "%": colorGraf = "#458ce9"
+        else: colorGraf = "darkblue"
 
-    ax.plot(x, y, marker="o", color=colorGraf)
-    ax.set_title(titulo)
-    ax.set_xlabel("Hora")
-    ax.set_ylabel(ylabel)
-    ax.grid(True)
-    
-    # Ajustes eje X
-    plt.xticks(rotation=45)
-    if len(x) > 10:
-        ax.set_xticks(range(0, len(x), 4))
-        ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+        # Check shapes
+        if len(x) != len(y):
+            min_len = min(len(x), len(y))
+            x = x[:min_len]
+            y = y[:min_len]
 
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", bbox_inches="tight")
-    plt.close(fig) 
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode()
+        ax.plot(x, y, marker="o", color=colorGraf)
+        ax.set_title(titulo)
+        ax.set_xlabel("Hora")
+        ax.set_ylabel(ylabel)
+        ax.grid(True)
+        
+        # Ajustes eje X
+        plt.xticks(rotation=45)
+        if len(x) > 10:
+            ax.set_xticks(range(0, len(x), 4))
+            ax.set_xticklabels([x[i] for i in range(0, len(x), 4)])
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode()
+    finally:
+        plt.close(fig)
 
 
 class AmbientalView(ft.Container):
     def __init__(self, page, usuarioApp):
         super().__init__(expand=True, padding=20)
         self.page_ref = page 
+        self.activo = True
 
         # --- CONTROLES VISUALES ---
-        self.img_temp = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
-        self.img_hum = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
-        self.img_iaq = ft.Image(src_base64="", border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        # Transparent 1x1 PNG to prevent error "Image must have either src or src_base64 specified"
+        empty_png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        self.img_temp = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        self.img_hum = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
+        self.img_iaq = ft.Image(src_base64=empty_png, border_radius=10, expand=1, fit=ft.ImageFit.CONTAIN)
 
         # --- CARGA CONFIGURACIÓN ---
         config_inicial = DataController.obtener_config_alertas()
@@ -104,10 +115,14 @@ class AmbientalView(ft.Container):
                 datos = DataController.obtener_datos_ambientales()
                 
                 if datos["temp"]:
-                    horas = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["temp"]]
-                    self.img_temp.src_base64 = generar_grafica(horas, [x["value"] for x in datos["temp"]], "Temperatura 24h", "°C")
-                    self.img_hum.src_base64 = generar_grafica(horas, [x["value"] for x in datos["hum"]], "Humedad 24h", "%")
-                    self.img_iaq.src_base64 = generar_grafica(horas, [x["value"] for x in datos["iaq"]], "Calidad Aire (IAQ)", "IAQ")
+                    horas_temp = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["temp"]]
+                    self.img_temp.src_base64 = generar_grafica(horas_temp, [x["value"] for x in datos["temp"]], "Temperatura 24h", "°C")
+                if datos["hum"]:
+                    horas_hum = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["hum"]]
+                    self.img_hum.src_base64 = generar_grafica(horas_hum, [x["value"] for x in datos["hum"]], "Humedad 24h", "%")
+                if datos.get("iaq"):
+                    horas_iaq = [datetime.datetime.strptime(x["hora"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M:%S") for x in datos["iaq"]]
+                    self.img_iaq.src_base64 = generar_grafica(horas_iaq, [x["value"] for x in datos["iaq"]], "Calidad Aire (IAQ)", "IAQ")
                 
                 # Usamos page_ref para evitar el error de NoneType
                 if self.page_ref: 
@@ -119,6 +134,7 @@ class AmbientalView(ft.Container):
         def auto_refresh_loop():
             while True:
                 time.sleep(10)
+                if not getattr(self, 'activo', True): break
                 # Verificamos si la página sigue activa antes de actualizar
                 if self.page_ref: 
                     try: cargar_y_actualizar_graficos()
@@ -221,3 +237,7 @@ class AmbientalView(ft.Container):
                     vertical_alignment=ft.CrossAxisAlignment.START),
                 
             ], scroll=ft.ScrollMode.AUTO)
+
+    def matar_hilos(self):
+        """Detiene el hilo en segundo plano cuando la vista se destruye"""
+        self.activo = False

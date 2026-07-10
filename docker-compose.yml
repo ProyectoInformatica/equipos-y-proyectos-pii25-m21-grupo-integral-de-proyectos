@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smart_residencial_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: smart_residencial
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./Script-Smart Residencial.sql:/docker-entrypoint-initdb.d/init.sql"
+    restart: unless-stopped

@@ -1,19 +1,17 @@
-import json
 import os
+import sys
 
+# Añadir el directorio raíz al path para importar database
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-CONFIG_FILE = os.path.join(DATA_DIR, "alert_config.json")
-
-# Función auxiliar definida fuera de la clase
-def _leer_json(nombre_archivo):
-    ruta = os.path.join(DATA_DIR, nombre_archivo)
-    if os.path.exists(ruta):
-        try:
-            with open(ruta, "r") as f: return json.load(f)
-        except: pass
-    # Retornar lista vacía si es historial (contiene 'env' o 'resource'), o dict vacío si es estado
-    return [] if "env" in nombre_archivo or "resource" in nombre_archivo else {}
+sys.path.insert(0, BASE_DIR)
+from database import (
+    get_sensor_data, get_resource_data, get_light_sensor, get_light_state,
+    get_light_manual_state, set_light_state, set_light_manual_state,
+    get_access_state, get_access_manual_state, set_access_manual_state,
+    get_access_log, get_alert_config, set_alert_config,
+    get_light_config, set_light_config, get_schedule,
+    add_pulsometro_data, get_pulsometro_data, update_pulsometro_data
+)
 
 def _normalizar_estado(valor, default="off"):
     if isinstance(valor, bool):
@@ -32,86 +30,42 @@ class DataController:
     # ILUMINACIÓN
     @staticmethod
     def obtener_luminosidad():
-        return _leer_json("light.json").get("luminosity", 0)
+        light_data = get_light_sensor()
+        return light_data.get("luminosity", 0)
 
     @staticmethod
     def obtener_estado_luz():
         # PRIORIZAR: Estado real del sistema (actualizado por auto Y manual)
-        data_estado = _leer_json("light_state.json")
-        if isinstance(data_estado, dict):
-            estado = data_estado.get("estado") or data_estado.get("estado_luces")
-            if estado is not None:
-                return _normalizar_estado(estado)
+        data_estado = get_light_state()
+        if data_estado and data_estado.get("estado"):
+            return _normalizar_estado(data_estado["estado"])
         
-        # SEGUNDO: Estado de light.json (actualizado por scheduler)
-        data_light = _leer_json("light.json")
-        if isinstance(data_light, dict):
-            estado = data_light.get("estado")
-            if estado is not None:
-                return _normalizar_estado(estado)
-
         # FALLBACK: Estado manual
-        data_manual = _leer_json("light_manual_state.json")
-        if isinstance(data_manual, dict):
-            estado = data_manual.get("state") if "state" in data_manual else data_manual.get("encender")
-            if estado is not None:
-                return _normalizar_estado(estado)
+        estado_manual = get_light_manual_state()
+        if estado_manual:
+            return _normalizar_estado(estado_manual)
 
         return "off"
 
     @staticmethod
     def guardar_estado_luz_manual(estado):
         estado_normalizado = _normalizar_estado(estado)
-        ruta_manual = os.path.join(DATA_DIR, "light_manual_state.json")
-        ruta_estado = os.path.join(DATA_DIR, "light_state.json")
-        
-        # Guardar en manual
-        data_manual = {"state": estado_normalizado}
         try:
-            with open(ruta_manual, "w") as f:
-                json.dump(data_manual, f, indent=4)
+            # Guardar en manual
+            set_light_manual_state(estado_normalizado)
+            # También actualizar light_state para sincronización
+            set_light_state(estado_normalizado.upper(), 100 if estado_normalizado == "on" else 0, "MANUAL")
+            return True
         except:
             return False
-        
-        # También actualizar light_state.json para sincronización
-        try:
-            data_estado = _leer_json("light_state.json")
-            if not isinstance(data_estado, dict):
-                data_estado = {}
-            data_estado["estado"] = estado_normalizado.upper()  # Mantener formato ON/OFF
-            data_estado["modo"] = "MANUAL"
-            with open(ruta_estado, "w") as f:
-                json.dump(data_estado, f, indent=4)
-        except:
-            pass  # No crítico si falla
-        
-        # Actualizar también light.json para mantener consistencia
-        try:
-            ruta_light = os.path.join(DATA_DIR, "light.json")
-            data_light = _leer_json("light.json")
-            if isinstance(data_light, dict):
-                data_light["estado"] = estado_normalizado
-                with open(ruta_light, "w") as f:
-                    json.dump(data_light, f, indent=4)
-        except:
-            pass  # No crítico si falla
-        
-        return True
 
     @staticmethod
     def guardar_estado_luz_automatico(estado, modo="AUTOMATICO"):
         """Guarda el estado de las luces cuando se controla automáticamente (umbral, horario, etc.)"""
         estado_normalizado = _normalizar_estado(estado)
-        ruta_estado = os.path.join(DATA_DIR, "light_state.json")
-        
         try:
-            data_estado = _leer_json("light_state.json")
-            if not isinstance(data_estado, dict):
-                data_estado = {}
-            data_estado["estado"] = estado_normalizado.upper()  # Mantener formato ON/OFF
-            data_estado["modo"] = modo
-            with open(ruta_estado, "w") as f:
-                json.dump(data_estado, f, indent=4)
+            intensidad = 100 if estado_normalizado == "on" else 0
+            set_light_state(estado_normalizado.upper(), intensidad, modo)
             return True
         except:
             return False
@@ -120,154 +74,163 @@ class DataController:
     @staticmethod
     def obtener_datos_ambientales():
         return {
-            "temp": _leer_json("envtemperatura.json"),
-            "hum": _leer_json("envhumedad.json"),
-            "iaq": _leer_json("envcalidadaire.json")
+            "temp": get_sensor_data("temp", 24),
+            "hum": get_sensor_data("hum", 24),
+            "iaq": get_sensor_data("iaq", 24)
         }
 
     # EMERGENCIAS
     @staticmethod
     def obtener_datos_emergencia():
         return {
-            "viento": _leer_json("envviento.json"),
-            "humo": _leer_json("envhumo.json")
+            "viento": get_sensor_data("viento", 24),
+            "humo": get_sensor_data("humo", 24)
         }
 
     # ACCESOS
     @staticmethod
     def obtener_estado_barrera(barrera="norte"):
         """Devuelve el estado de una barrera específica (norte o sur) y distancia."""
-        data = _leer_json("access_state.json")
-        if not data or not isinstance(data, dict):
-            return {"barrera_abierta": False, "mensaje": "Iniciando...", "distancia_detectada": 500}
-        
-        # Si el formato es antiguo (sin norte/sur), devolver compatibilidad
-        if "barrera_abierta" in data:
-            return data
-        
-        # Formato nuevo con múltiples barreras
-        estado_barrera = data.get(barrera, {})
-        if not estado_barrera:
-            return {"barrera_abierta": False, "mensaje": "BARRERA CERRADA", "distancia_detectada": 500}
-        return estado_barrera
+        return get_access_state(barrera)
 
     @staticmethod
     def obtener_estado_barreras():
         """Devuelve el estado de todas las barreras."""
-        data = _leer_json("access_state.json")
-        if not data or not isinstance(data, dict):
-            return {
-                "norte": {"barrera_abierta": False, "mensaje": "BARRERA CERRADA", "distancia_detectada": 500},
-                "sur": {"barrera_abierta": False, "mensaje": "BARRERA CERRADA", "distancia_detectada": 500}
-            }
-        
-        # Si el formato es antiguo, convertirlo
-        if "barrera_abierta" in data:
-            return {
-                "norte": data,
-                "sur": {"barrera_abierta": False, "mensaje": "BARRERA CERRADA", "distancia_detectada": 500}
-            }
-        
-        return data
+        return get_access_state()
 
     @staticmethod
     def obtener_historial_accesos():
         """Devuelve la lista de últimos accesos."""
-        return _leer_json("access_log.json")
+        return get_access_log(20)
 
     @staticmethod
     def obtener_manual_barrera(barrera="norte"):
         """Lee la configuración manual de una barrera específica."""
-        ruta = os.path.join(DATA_DIR, "access_manual_state.json")
-        if os.path.exists(ruta):
-            try:
-                with open(ruta, "r") as f: 
-                    data = json.load(f)
-                    # Si el formato es antiguo (sin norte/sur), devolver compatibilidad
-                    if "modo_manual" in data:
-                        return data
-                    # Formato nuevo con múltiples barreras
-                    return data.get(barrera, {"modo_manual": False, "abrir": False})
-            except: pass
-        return {"modo_manual": False, "abrir": False}
+        return get_access_manual_state(barrera)
 
     @staticmethod
     def obtener_manual_barreras():
         """Lee la configuración manual de todas las barreras."""
-        ruta = os.path.join(DATA_DIR, "access_manual_state.json")
-        if os.path.exists(ruta):
-            try:
-                with open(ruta, "r") as f: 
-                    data = json.load(f)
-                    # Si el formato es antiguo, convertirlo
-                    if "modo_manual" in data:
-                        return {
-                            "norte": data,
-                            "sur": {"modo_manual": False, "abrir": False}
-                        }
-                    return data
-            except: pass
-        return {
-            "norte": {"modo_manual": False, "abrir": False},
-            "sur": {"modo_manual": False, "abrir": False}
-        }
+        return get_access_manual_state()
 
     @staticmethod
     def guardar_manual_barrera(barrera, modo_manual, abrir):
         """Guarda la orden del usuario para una barrera específica."""
-        ruta = os.path.join(DATA_DIR, "access_manual_state.json")
         try:
-            # Leer datos existentes
-            if os.path.exists(ruta):
-                with open(ruta, "r") as f:
-                    data = json.load(f)
-            else:
-                data = {}
-            
-            # Si el formato es antiguo, convertirlo
-            if "modo_manual" in data:
-                data = {
-                    "norte": data,
-                    "sur": {"modo_manual": False, "abrir": False}
-                }
-            
-            # Actualizar la barrera específica
-            if barrera not in data:
-                data[barrera] = {"modo_manual": False, "abrir": False}
-            
-            data[barrera]["modo_manual"] = modo_manual
-            data[barrera]["abrir"] = abrir
-            
-            # Guardar
-            with open(ruta, "w") as f:
-                json.dump(data, f, indent=4)
+            set_access_manual_state(barrera, modo_manual, abrir)
             return True
-        except: return False
+        except:
+            return False
 
     # RECURSOS 
     @staticmethod
     def obtener_datos_agua():
         """Devuelve historial de consumo de agua."""
-        return _leer_json("resource_water.json")
+        return get_resource_data("water", 24)
 
     @staticmethod
     def obtener_datos_electricidad():
         """Devuelve historial de consumo eléctrico."""
-        return _leer_json("resource_power.json")
+        return get_resource_data("power", 24)
 
     # CONFIGURACIÓN ALERTAS
     @staticmethod
     def obtener_config_alertas():
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, "r") as f: return json.load(f)
-            except: pass
-        return {"temp_max": 35, "hum_min": 30, "hum_max": 70, "iaq_max": 100}
+        return get_alert_config()
 
     @staticmethod
     def guardar_config_alertas(config):
         try:
-            with open(CONFIG_FILE, "w") as f:
-                json.dump(config, f, indent=4)
+            for key, value in config.items():
+                set_alert_config(key, value)
             return True
-        except: return False
+        except:
+            return False
+    
+    # CONFIGURACIÓN DE ILUMINACIÓN
+    @staticmethod
+    def obtener_config_iluminacion():
+        """Obtiene la configuración de iluminación (umbral, horario)"""
+        try:
+            umbral_config = get_light_config("umbral_luminosidad")
+            umbral = 50  # Valor por defecto
+            if umbral_config and "umbral_luminosidad" in umbral_config:
+                try:
+                    umbral = int(umbral_config["umbral_luminosidad"])
+                except:
+                    pass
+            
+            horario = get_schedule()
+            
+            return {
+                "umbral": umbral,
+                "horario": horario
+            }
+        except Exception as e:
+            print(f"Error obteniendo configuración de iluminación: {e}")
+            return {
+                "umbral": 50,
+                "horario": {"hora_inicio": 0, "minuto_inicio": 0, "hora_fin": 0, "minuto_fin": 0}
+            }
+    
+    @staticmethod
+    def obtener_umbral_luminosidad():
+        """Obtiene el umbral de luminosidad configurado"""
+        try:
+            config = get_light_config("umbral_luminosidad")
+            if config and "umbral_luminosidad" in config:
+                return int(config["umbral_luminosidad"])
+            return 50  # Valor por defecto
+        except:
+            return 50
+    
+    @staticmethod
+    def guardar_umbral_luminosidad(umbral):
+        """Guarda el umbral de luminosidad"""
+        try:
+            if not (0 <= umbral <= 100):
+                return {"success": False, "message": "El umbral debe estar entre 0 y 100"}
+            set_light_config("umbral_luminosidad", str(int(umbral)))
+            return {"success": True, "message": "Umbral guardado correctamente"}
+        except Exception as e:
+            return {"success": False, "message": f"Error al guardar umbral: {str(e)}"}
+    
+    @staticmethod
+    def obtener_horario():
+        """Obtiene el horario de iluminación configurado"""
+        try:
+            return get_schedule()
+        except Exception as e:
+            print(f"Error obteniendo horario: {e}")
+            return {"hora_inicio": 0, "minuto_inicio": 0, "hora_fin": 0, "minuto_fin": 0}
+    
+    @staticmethod
+    def guardar_horario(hora_inicio, minuto_inicio, hora_fin, minuto_fin):
+        """Guarda el horario de iluminación"""
+        from controllers.scheduler import guardar_horario as guardar_horario_scheduler
+        try:
+            success = guardar_horario_scheduler(hora_inicio, minuto_inicio, hora_fin, minuto_fin)
+            if success:
+                return {"success": True, "message": "Horario guardado correctamente"}
+            else:
+                return {"success": False, "message": "Error al guardar horario. Verifica que los valores sean correctos."}
+        except Exception as e:
+            return {"success": False, "message": f"Error al guardar horario: {str(e)}"}
+
+    @staticmethod
+    def guardar_datos_pulsometro(frecuencia_cardiaca, presion_sistolica, presion_diastolica):
+        return add_pulsometro_data(frecuencia_cardiaca, presion_sistolica, presion_diastolica)
+
+    @staticmethod
+    def obtener_datos_pulsometro(limit=20):
+        return get_pulsometro_data(limit)
+
+    @staticmethod
+    def actualizar_datos_pulsometro(id_pulsometro, frecuencia_cardiaca, presion_sistolica, presion_diastolica):
+        return update_pulsometro_data(
+            id_pulsometro,
+            frecuencia_cardiaca,
+            presion_sistolica,
+            presion_diastolica
+        )
+

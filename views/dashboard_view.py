@@ -8,6 +8,7 @@ class DashboardView(ft.Container):
     def __init__(self, page):
         super().__init__(expand=True, padding=20)
         self.page = page
+        self.activo = True
 
         # Variables para almacenar datos históricos
         self.historial_temp = []
@@ -381,6 +382,10 @@ class DashboardView(ft.Container):
 
     def _update_loop(self):
         while True:
+            if not getattr(self, 'activo', True): break
             if self.page:
                 self._update_ui()
             time.sleep(2)
+
+    def matar_hilos(self):
+        self.activo = False
